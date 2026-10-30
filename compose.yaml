@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: portfoliosync-postgres
+    environment:
+      POSTGRES_DB: portfoliosync
+      POSTGRES_USER: portfoliosync
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-portfoliosync}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

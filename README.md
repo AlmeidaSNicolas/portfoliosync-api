@@ -1,8 +1,10 @@
 # PortfolioSync API
 
+[![CI](https://github.com/AlmeidaSNicolas/portfoliosync-api/actions/workflows/ci.yml/badge.svg)](https://github.com/AlmeidaSNicolas/portfoliosync-api/actions/workflows/ci.yml)
+
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprint 0 (setup) is underway. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprint 0 (setup) is done: the app starts against PostgreSQL, the schema is created by Flyway and CI runs the tests on every push. Sprint 1 (projects endpoint) is next. See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -88,9 +90,17 @@ Key decisions:
 
 ## Tech stack
 
-Java 21 · Spring Boot 4 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · JUnit 5 · Testcontainers · Docker Compose · Maven
+Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · Docker Compose · Maven · GitHub Actions (CI)
 
-Planned: Spring Security (admin endpoints), WireMock, GitHub Actions CI/CD, deploy to Render + Neon.
+Planned: Bean Validation, Spring Security (admin endpoints), WireMock, CD with GitHub Actions, deploy to Render + Neon.
+
+## Database migrations
+
+The schema is owned by Flyway. Migrations live in `src/main/resources/db/migration` and run when the app starts; Hibernate runs with `ddl-auto=validate`, so it only checks that the entities match the tables and never changes the schema. A migration that has already been applied is never edited: any change goes in a new `V<n>__` file.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `./mvnw verify` on every push to `main` and every pull request targeting `main`, using Temurin 21 with the Maven dependency cache. The integration tests start PostgreSQL 17 through Testcontainers, so CI needs no database configuration.
 
 ## Running locally
 
@@ -119,7 +129,7 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 
 ## Roadmap
 
-- [ ] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `mvn verify`
+- [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
 - [ ] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
 - [ ] **Sprint 2 — GitHub client:** read `portfolio.json` and topics, JSON validation, WireMock tests
 - [ ] **Sprint 3 — Webhook:** HMAC signature check, idempotency by delivery id

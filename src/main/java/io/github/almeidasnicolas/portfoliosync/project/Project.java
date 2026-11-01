@@ -38,8 +38,22 @@ public class Project {
     @Column(updatable = false)
     private Instant createdAt;
 
-    protected Project(){
+    protected Project() {
 
+    }
+
+    public Project(Long githubRepoId, String repoName, String htmlUrl, LocalizedText title, LocalizedText description, List<String> stack, String demoUrl, boolean featured, Integer displayOrder, Instant pushedAt) {
+        this.githubRepoId = githubRepoId;
+        this.repoName = repoName;
+        this.htmlUrl = htmlUrl;
+        this.title = title;
+        this.description = description;
+        this.stack = stack != null ? stack : new ArrayList<>();
+        this.demoUrl = demoUrl;
+        this.featured = featured;
+        this.displayOrder = displayOrder;
+        this.pushedAt = pushedAt;
+        this.syncedAt = Instant.now();
     }
 
 }

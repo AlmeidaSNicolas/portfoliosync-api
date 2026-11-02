@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.project;
+package io.github.almeidasnicolas.portfoliosync.project.dto;
 
 import java.util.List;
 

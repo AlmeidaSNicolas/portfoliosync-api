@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.project;
+package io.github.almeidasnicolas.portfoliosync.project.domain;
 
 import jakarta.persistence.*;
 import lombok.Getter;

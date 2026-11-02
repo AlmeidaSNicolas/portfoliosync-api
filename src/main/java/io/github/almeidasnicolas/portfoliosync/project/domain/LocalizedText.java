@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.project;
+package io.github.almeidasnicolas.portfoliosync.project.domain;
 
 public record LocalizedText(String es, String en) {
     public String in(String lang) {

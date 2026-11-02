@@ -1,5 +1,8 @@
-package io.github.almeidasnicolas.portfoliosync.project;
+package io.github.almeidasnicolas.portfoliosync.project.service;
 
+import io.github.almeidasnicolas.portfoliosync.project.domain.Project;
+import io.github.almeidasnicolas.portfoliosync.project.dto.ProjectResponse;
+import io.github.almeidasnicolas.portfoliosync.project.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

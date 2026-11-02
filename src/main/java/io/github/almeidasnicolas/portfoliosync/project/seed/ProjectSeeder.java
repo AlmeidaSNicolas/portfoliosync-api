@@ -1,5 +1,8 @@
-package io.github.almeidasnicolas.portfoliosync.project;
+package io.github.almeidasnicolas.portfoliosync.project.seed;
 
+import io.github.almeidasnicolas.portfoliosync.project.domain.LocalizedText;
+import io.github.almeidasnicolas.portfoliosync.project.domain.Project;
+import io.github.almeidasnicolas.portfoliosync.project.repository.ProjectRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;

@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprint 0 (setup) is done: the app starts against PostgreSQL, the schema is created by Flyway and CI runs the tests on every push. Sprint 1 (projects endpoint) is next. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 and 1 are done: `GET /api/projects` lists the visible projects in Spanish or English from seed data, with standard error responses. Sprint 2 (GitHub client) is next. See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -88,6 +88,66 @@ Key decisions:
 - **Idempotent webhooks**: each delivery is inserted first; the `UNIQUE` constraint on `delivery_id` rejects GitHub retries atomically, then the delivery is processed and its status updated.
 - **`webhook_deliveries` has no foreign key**: it is a log, and it also records deliveries for repositories that never became projects.
 
+## API
+
+### `GET /api/projects`
+
+Lists the visible projects, with the translated fields in one language.
+
+| Query parameter | Values | Default |
+| --- | --- | --- |
+| `lang` | `es`, `en` | `es` |
+
+```bash
+curl "http://localhost:8080/api/projects?lang=en"
+```
+
+```json
+[
+  {
+    "repoName": "geopolitica-news-bot",
+    "title": "Geopolitical news curation bot",
+    "description": "Plain Java, no frameworks…",
+    "stack": ["Java", "PostgreSQL"],
+    "htmlUrl": "https://github.com/AlmeidaSNicolas/geopolitica-news-bot",
+    "demoUrl": null,
+    "featured": true
+  }
+]
+```
+
+The response is a DTO (`ProjectResponse`), never the JPA entity: internal fields such as `lastError` or `syncedAt` stay inside the API, and the JSON does not change when the table does.
+
+An unsupported language returns `400 Bad Request` as an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem detail, produced by a global `@RestControllerAdvice`:
+
+```json
+{
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Unsupported language: pt",
+  "instance": "/api/projects"
+}
+```
+
+Interactive docs (springdoc): <http://localhost:8080/swagger-ui.html>
+
+## Project structure
+
+Packages are split by feature first, then by layer inside each feature, so every feature keeps its own boundary and the layers stay visible. A feature talks to another one only through its service.
+
+```
+io.github.almeidasnicolas.portfoliosync
+├── project/
+│   ├── controller/   ProjectController (GET /api/projects)
+│   ├── service/      ProjectService (entity → DTO, language selection)
+│   ├── repository/   ProjectRepository (Spring Data JPA)
+│   ├── dto/          ProjectResponse
+│   ├── domain/       Project (entity), LocalizedText (es/en value)
+│   └── seed/         ProjectSeeder (sample data, "dev" profile only)
+└── shared/
+    └── exception/    GlobalExceptionHandler, UnsupportedLanguageException
+```
+
 ## Tech stack
 
 Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · Docker Compose · Maven · GitHub Actions (CI)
@@ -113,6 +173,12 @@ docker compose up -d   # starts PostgreSQL 17 on localhost:5432
 
 Health check: <http://localhost:8080/actuator/health>
 
+To start with sample projects, run with the `dev` profile. `ProjectSeeder` inserts three projects when the table is empty and never runs in other environments:
+
+```bash
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+```
+
 Configuration comes from environment variables, with local defaults that match `compose.yaml`:
 
 | Variable | Local default |
@@ -130,7 +196,7 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 ## Roadmap
 
 - [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
-- [ ] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
+- [x] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
 - [ ] **Sprint 2 — GitHub client:** read `portfolio.json` and topics, JSON validation, WireMock tests
 - [ ] **Sprint 3 — Webhook:** HMAC signature check, idempotency by delivery id
 - [ ] **Sprint 4 — Admin and ordering:** token-protected manual resync, listing order

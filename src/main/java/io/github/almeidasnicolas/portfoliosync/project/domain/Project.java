@@ -27,7 +27,7 @@ public class Project {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> stack = new ArrayList<>();
     private String demoUrl;
-    private Boolean featured;
+    private boolean featured;
     private Integer displayOrder;
     private boolean visible = true;
     private Instant pushedAt;

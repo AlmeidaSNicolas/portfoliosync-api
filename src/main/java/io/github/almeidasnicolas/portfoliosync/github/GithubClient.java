@@ -1,6 +1,7 @@
 package io.github.almeidasnicolas.portfoliosync.github;
 
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -18,11 +19,18 @@ public class GithubClient {
     }
 
     public PortfolioFile getPortfolioFile(String repoName){
-        String jsonResult = restClient.get()
-                .uri("/repos/AlmeidaSNicolas/{repo}/contents/portfolio.json", repoName)
-                .retrieve()
-                .body(ContentDTO.class).decode();
+        try{
+            String jsonResult = restClient.get()
+                    .uri("/repos/AlmeidaSNicolas/{repo}/contents/portfolio.json", repoName)
+                    .retrieve()
+                    .body(ContentDTO.class).decode();
 
-        return jsonMapper.readValue(jsonResult, PortfolioFile.class);
+            return jsonMapper.readValue(jsonResult, PortfolioFile.class);
+
+        }catch (HttpClientErrorException.NotFound e){
+            throw new PortfolioFileNotFoundException("portfolio.json not found in repo: " + repoName, e );
+        }
+
+
     }
 }

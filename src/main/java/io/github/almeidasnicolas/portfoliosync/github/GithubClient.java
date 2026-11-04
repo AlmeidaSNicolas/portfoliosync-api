@@ -14,6 +14,7 @@ public class GithubClient {
              return restClient.get()
                 .uri("/repos/AlmeidaSNicolas/{repo}/contents/portfolio.json", repoName)
                 .retrieve()
-                .body(String.class);
+                .body(ContentDTO.class).decode();
+
     }
 }

@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 and 1 are done: `GET /api/projects` lists the visible projects in Spanish or English from seed data, with standard error responses. Sprint 2 (GitHub client) is next. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 2 are done: `GET /api/projects` lists the visible projects in Spanish or English from seed data, and a tested GitHub client reads and validates `portfolio.json`. The client is not connected to the API yet: the webhook and the sync arrive in Sprint 3. See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -131,6 +131,23 @@ An unsupported language returns `400 Bad Request` as an [RFC 9457](https://www.r
 
 Interactive docs (springdoc): <http://localhost:8080/swagger-ui.html>
 
+## GitHub client
+
+`GithubClient` takes a repository name and returns its `portfolio.json` as a `PortfolioFile` record:
+
+1. It calls the [repository contents endpoint](https://docs.github.com/en/rest/repos/contents) with Spring's `RestClient`.
+2. It decodes the `content` field of the response, which GitHub sends in Base64.
+3. It maps the decoded JSON to `PortfolioFile` with Jackson.
+
+Key decisions:
+
+- **Contents API instead of `download_url`**: raw file URLs are cached for a few minutes after a push, so a webhook could read a stale file.
+- **Own exception for a 404**: `PortfolioFileNotFoundException` replaces Spring's `HttpClientErrorException.NotFound` and keeps it as the cause. GitHub answers 404 both for a missing repository and for a missing file, so the name covers both.
+- **Validation is a separate step**: the client only fetches. `PortfolioValidator` requires `title` and `description` in both `es` and `en`, stops at the first problem and throws `InvalidPortfolioFileException`. The sync service will call it in Sprint 3 and store the error in `last_error`.
+- **Base URL in configuration**: it comes from `github.api.base-url`, so tests can point the client at a local server.
+
+`GithubClientTest` uses [WireMock](https://wiremock.org/) to run a real HTTP server on a random port in place of GitHub. It covers a successful read and a 404, and needs neither Docker nor internet access.
+
 ## Project structure
 
 Packages are split by feature first, then by layer inside each feature, so every feature keeps its own boundary and the layers stay visible. A feature talks to another one only through its service.
@@ -144,15 +161,16 @@ io.github.almeidasnicolas.portfoliosync
 │   ├── dto/          ProjectResponse
 │   ├── domain/       Project (entity), LocalizedText (es/en value)
 │   └── seed/         ProjectSeeder (sample data, "dev" profile only)
+├── github/           GithubClient, PortfolioValidator, PortfolioFile, ContentDTO, exceptions
 └── shared/
     └── exception/    GlobalExceptionHandler, UnsupportedLanguageException
 ```
 
 ## Tech stack
 
-Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · Docker Compose · Maven · GitHub Actions (CI)
+Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · WireMock · Docker Compose · Maven · GitHub Actions (CI)
 
-Planned: Bean Validation, Spring Security (admin endpoints), WireMock, CD with GitHub Actions, deploy to Render + Neon.
+Planned: Bean Validation, Spring Security (admin endpoints), CD with GitHub Actions, deploy to Render + Neon.
 
 ## Database migrations
 
@@ -179,13 +197,14 @@ To start with sample projects, run with the `dev` profile. `ProjectSeeder` inser
 SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
-Configuration comes from environment variables, with local defaults that match `compose.yaml`:
+Configuration comes from environment variables, with local defaults (the database ones match `compose.yaml`):
 
 | Variable | Local default |
 | --- | --- |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/portfoliosync` |
 | `DB_USERNAME` | `portfoliosync` |
 | `DB_PASSWORD` | `portfoliosync` |
+| `GITHUB_API_URL` | `https://api.github.com` |
 
 Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be running):
 
@@ -197,8 +216,8 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 
 - [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
 - [x] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
-- [ ] **Sprint 2 — GitHub client:** read `portfolio.json` and topics, JSON validation, WireMock tests
-- [ ] **Sprint 3 — Webhook:** HMAC signature check, idempotency by delivery id
+- [x] **Sprint 2 — GitHub client:** read `portfolio.json`, JSON validation, WireMock tests
+- [ ] **Sprint 3 — Webhook and sync:** HMAC signature check, idempotency by delivery id, read repository topics, store projects and `last_error`
 - [ ] **Sprint 4 — Admin and ordering:** token-protected manual resync, listing order
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions
 - [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback

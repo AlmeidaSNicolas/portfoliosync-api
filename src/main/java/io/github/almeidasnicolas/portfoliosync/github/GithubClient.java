@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.github;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -9,13 +10,12 @@ import tools.jackson.databind.json.JsonMapper;
 public class GithubClient {
 
     private final JsonMapper jsonMapper;
+    private final RestClient restClient;
 
-    private final RestClient restClient = RestClient.builder()
-            .baseUrl("https://api.github.com")
-            .build();
 
-    public GithubClient(JsonMapper jsonMapper) {
+    public GithubClient(JsonMapper jsonMapper, @Value("${github.api.base-url}") String url) {
         this.jsonMapper = jsonMapper;
+        this.restClient = RestClient.builder().baseUrl(url).build();
     }
 
     public PortfolioFile getPortfolioFile(String repoName){

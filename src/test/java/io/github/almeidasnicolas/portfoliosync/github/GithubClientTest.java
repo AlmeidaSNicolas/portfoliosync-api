@@ -56,7 +56,6 @@ public class GithubClientTest {
                         .withStatus(404)));
 
         Exception exception = assertThrows(PortfolioFileNotFoundException.class, () -> githubClient.getPortfolioFile("amendoinSalgado"));
-
     }
 
 }

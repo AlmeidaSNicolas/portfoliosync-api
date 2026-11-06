@@ -48,15 +48,15 @@ public class GithubClientTest {
     }
 
     @Test
-    void shouldThrowPortfolioFileNotFoundExceptionWhenGithubReturns404(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+    public void shouldThrowPortfolioFileNotFoundExceptionWhenGithubReturns404(WireMockRuntimeInfo wireMockRuntimeInfo){
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl());
 
         stubFor(get(urlEqualTo("/repos/AlmeidaSNicolas/amendoinSalgado/contents/portfolio.json"))
                 .willReturn(aResponse()
                         .withStatus(404)));
 
-        assertThrows(PortfolioFileNotFoundException.class,
-                () -> githubClient.getPortfolioFile("amendoinSalgado"));
+        Exception exception = assertThrows(PortfolioFileNotFoundException.class, () -> githubClient.getPortfolioFile("amendoinSalgado"));
+
     }
 
 }

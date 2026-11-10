@@ -1,5 +1,6 @@
-package io.github.almeidasnicolas.portfoliosync.webhook;
+package io.github.almeidasnicolas.portfoliosync.webhook.controller;
 
+import io.github.almeidasnicolas.portfoliosync.webhook.service.HmacValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

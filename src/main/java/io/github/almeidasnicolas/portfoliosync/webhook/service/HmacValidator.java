@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.webhook;
+package io.github.almeidasnicolas.portfoliosync.webhook.service;
 
 import org.springframework.stereotype.Component;
 

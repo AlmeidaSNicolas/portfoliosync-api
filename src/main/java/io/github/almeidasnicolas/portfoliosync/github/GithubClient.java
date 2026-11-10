@@ -30,7 +30,20 @@ public class GithubClient {
         }catch (HttpClientErrorException.NotFound e){
             throw new PortfolioFileNotFoundException("portfolio.json not found in repo: " + repoName, e );
         }
-
-
     }
+
+    public RepoMetadata getRepoMetadata(String repoName){
+        try{
+            RepoMetadata repoMetadata = restClient.get()
+                    .uri("/repos/AlmeidaSNicolas/{repo}", repoName)
+                    .retrieve()
+                    .body(RepoMetadata.class);
+
+            return repoMetadata;
+
+        }catch (HttpClientErrorException.NotFound e){
+            throw new RepositoryNotFoundException("repository not found: " + repoName, e );
+        }
+    }
+
 }

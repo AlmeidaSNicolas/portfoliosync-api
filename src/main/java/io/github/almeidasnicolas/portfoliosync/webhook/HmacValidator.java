@@ -40,11 +40,8 @@ public class HmacValidator {
         }
 
         String expectedSignature = SIGNATURE_PREFIX + calculateHmac(secret, body);
-
         byte[] expectedBytes = expectedSignature.getBytes(StandardCharsets.UTF_8);
         byte[] headerBytes = header.getBytes(StandardCharsets.UTF_8);
-
-
         return MessageDigest.isEqual(expectedBytes, headerBytes);
 
 

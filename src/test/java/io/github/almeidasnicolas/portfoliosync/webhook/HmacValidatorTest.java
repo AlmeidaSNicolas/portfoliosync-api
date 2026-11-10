@@ -16,9 +16,7 @@ public class HmacValidatorTest {
 
     @Test
     void shouldAcceptOfficialGithubExample() {
-
         assertTrue(validator.isAuthentic(SECRET, BODY, HEADER));
-
     }
 
     @Test

@@ -3,7 +3,6 @@ package io.github.almeidasnicolas.portfoliosync.webhook;
 import io.github.almeidasnicolas.portfoliosync.TestcontainersConfiguration;
 import io.github.almeidasnicolas.portfoliosync.webhook.repository.WebhookDeliveryRepository;
 import io.github.almeidasnicolas.portfoliosync.webhook.service.WebhookDeliveryService;
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,7 +22,7 @@ public class WebhookDeliveryServiceTest {
     private WebhookDeliveryRepository webhookDeliveryRepository;
 
     @Test
-    void testNew(){
+    void shouldRegisterSameDeliveryOnlyOnce(){
         UUID randomUUID = UUID.randomUUID();
         assertTrue(webhookDeliveryService.registerIfNew(randomUUID, "push"));
         assertFalse(webhookDeliveryService.registerIfNew(randomUUID, "push"));

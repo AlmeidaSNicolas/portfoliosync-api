@@ -56,4 +56,17 @@ public class Project {
         this.syncedAt = Instant.now();
     }
 
+    public void updateFromGithub (LocalizedText title, LocalizedText description,List<String> stack, String demoUrl,boolean featured, Integer displayOrder, Instant pushedAt, String repoName, String htmlUrl){
+        this.title = title;
+        this.description = description;
+        this.stack = stack != null ? stack : new ArrayList<>();
+        this.demoUrl = demoUrl;
+        this.featured = featured;
+        this.displayOrder = displayOrder;
+        this.pushedAt = pushedAt;
+        this.repoName = repoName;
+        this.htmlUrl = htmlUrl;
+        this.syncedAt = Instant.now();
+    }
+
 }

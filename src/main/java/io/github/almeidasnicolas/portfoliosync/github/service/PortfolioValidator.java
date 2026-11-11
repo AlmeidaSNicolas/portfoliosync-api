@@ -1,4 +1,7 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.service;
+
+import io.github.almeidasnicolas.portfoliosync.github.dto.PortfolioFile;
+import io.github.almeidasnicolas.portfoliosync.github.exception.InvalidPortfolioFileException;
 
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,10 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.client;
+
+import io.github.almeidasnicolas.portfoliosync.github.dto.ContentDTO;
+import io.github.almeidasnicolas.portfoliosync.github.dto.PortfolioFile;
+import io.github.almeidasnicolas.portfoliosync.github.dto.RepoMetadata;
+import io.github.almeidasnicolas.portfoliosync.github.exception.PortfolioFileNotFoundException;
+import io.github.almeidasnicolas.portfoliosync.github.exception.RepositoryNotFoundException;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

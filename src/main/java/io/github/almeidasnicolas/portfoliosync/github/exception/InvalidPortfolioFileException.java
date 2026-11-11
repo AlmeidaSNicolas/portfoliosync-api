@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.exception;
 
 public class InvalidPortfolioFileException extends RuntimeException {
     public InvalidPortfolioFileException(String message) {

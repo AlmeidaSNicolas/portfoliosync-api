@@ -1,6 +1,5 @@
-package io.github.almeidasnicolas.portfoliosync.webhook;
+package io.github.almeidasnicolas.portfoliosync.webhook.service;
 
-import io.github.almeidasnicolas.portfoliosync.webhook.service.HmacValidator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

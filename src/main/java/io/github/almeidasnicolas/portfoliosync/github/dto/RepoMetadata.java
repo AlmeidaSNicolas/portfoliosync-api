@@ -1,4 +1,4 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

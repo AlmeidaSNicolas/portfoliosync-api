@@ -1,8 +1,7 @@
-package io.github.almeidasnicolas.portfoliosync.webhook;
+package io.github.almeidasnicolas.portfoliosync.webhook.service;
 
 import io.github.almeidasnicolas.portfoliosync.TestcontainersConfiguration;
 import io.github.almeidasnicolas.portfoliosync.webhook.repository.WebhookDeliveryRepository;
-import io.github.almeidasnicolas.portfoliosync.webhook.service.WebhookDeliveryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

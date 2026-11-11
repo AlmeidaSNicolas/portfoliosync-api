@@ -1,4 +1,9 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.client;
+
+import io.github.almeidasnicolas.portfoliosync.github.dto.PortfolioFile;
+import io.github.almeidasnicolas.portfoliosync.github.dto.RepoMetadata;
+import io.github.almeidasnicolas.portfoliosync.github.exception.PortfolioFileNotFoundException;
+import io.github.almeidasnicolas.portfoliosync.github.exception.RepositoryNotFoundException;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;

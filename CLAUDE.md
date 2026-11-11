@@ -42,20 +42,16 @@ Package by feature, then by layer: `project`, `github`, `webhook`, `sync`, `shar
 
 ## Current state (update at the end of each session)
 
-Updated 2026-11-11. Working branch: `sprint-3-webhook` (not `main`). Sprints 0 to 2 done; Sprint 3 in progress.
+Updated 2026-11-11 (end of the evening session). Working branch: `sprint-3-webhook` (not `main`), PR #3 still a draft. Sprints 0 to 2 done; Sprint 3 has one item left.
 
-Done and committed: HMAC check, `POST /webhooks/github`, idempotency by delivery id, repository metadata and topics, sync create/update with tests.
+Done and committed (last commits `d7157e4`, `09af4ed`): HMAC check, `POST /webhooks/github`, idempotency by delivery id, repository metadata and topics, sync create/update, hide on lost topic, hide + `last_error` + rethrow on a missing or invalid `portfolio.json`, tests for all of that (`SyncServiceTest`, 7 tests), README and PR checklist.
 
-In progress, uncommitted and without tests yet:
+Last item of Sprint 3, in progress and uncommitted:
 
-- Hide a project when it loses the `portfolio` topic: `SyncService` calls `ProjectService.hide(githubRepoId)`, which calls `Project.hide()`. A successful update now sets `visible = true` and clears `lastError`.
-- `ProjectService.registerError` and `Project.errorRegister` exist but nothing calls them yet.
+- Created: `webhook/dto/GithubPushBody(repository)`, `webhook/dto/GithubPushRepository(id, name)`, `webhook/exception/InvalidWebhookPayloadFormatException`, `webhook/service/ExtractDataFromGithubPush` (reads the `byte[]` body with `JsonMapper`, rejects a missing `repository.name`) and a 400 handler for the new exception in `GlobalExceptionHandler`. No tests yet; names in `ExtractDataFromGithubPush` (class and method `dataRetur`) are still placeholders he may rename.
+- Still to do: wire it into `WebhookController` after the HMAC check (only `push` runs the sync; `ping` does not), handle a repeated delivery (`registerIfNew` returns `false`; do not sync again), call `SyncService.sync`, set the delivery status (`PROCESSED`, `FAILED` when the sync throws, `IGNORED`), add methods to `WebhookDelivery` for status, `repoName`, `githubRepoId`, `processedAt`, `errorMessage`, tests (failure paths too), README roadmap.
+- Next session starts here: Nicolas writes the ordered steps of `receiveDelivery` in words (repeated delivery, `ping`, `push`) and Claude reviews the order before any code.
 
-Still missing in Sprint 3:
+Known loose ends: CI runs for PR #3 stuck in `queued` for 2h+ (GitHub queue, not the code; re-run if still stuck); `.DS_Store` was committed by mistake in `d7157e4` (remove with `git rm --cached` and add to `.gitignore`); a malformed `portfolio.json` makes Jackson throw an exception that `SyncService` does not catch; `GlobalExceptionHandler` in `shared` now imports a `webhook` exception (interview question: what happens when it imports one per feature?).
 
-1. Hide the project when `portfolio.json` is missing or invalid, keep the last valid version, and call `registerError` with the reason.
-2. Tests for the hide and error paths (`SyncServiceTest`).
-3. Run the sync when a `push` delivery arrives (call `SyncService` from the webhook flow and update the delivery status).
-4. Update the README roadmap when those are done.
-
-Next after that: Sprint 4 (token-protected manual resync, listing order).
+Next after Sprint 3: Sprint 4 (token-protected manual resync, listing order).

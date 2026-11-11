@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 2 are done, and Sprint 3 is underway. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature and records each delivery once. A tested sync service already turns a repository into a stored project (create or update). Still missing in Sprint 3: hiding projects that lose the topic or the file, storing `last_error`, and calling the sync from the webhook. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 2 are done, and Sprint 3 is underway. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature and records each delivery once. A tested sync service already turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Still missing in Sprint 3: calling the sync from the webhook. See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -170,7 +170,7 @@ Key decisions:
 
 - **Contents API instead of `download_url`**: raw file URLs are cached for a few minutes after a push, so a webhook could read a stale file.
 - **Own exceptions for a 404**: `PortfolioFileNotFoundException` and `RepositoryNotFoundException` replace Spring's `HttpClientErrorException.NotFound` and keep it as the cause, so the rest of the code never depends on Spring's HTTP exceptions.
-- **Validation is a separate step**: the client only fetches. `PortfolioValidator` requires `title` and `description` in both `es` and `en`, stops at the first problem and throws `InvalidPortfolioFileException`. The sync service calls it before saving; storing the error in `last_error` comes next.
+- **Validation is a separate step**: the client only fetches. `PortfolioValidator` requires `title` and `description` in both `es` and `en`, stops at the first problem and throws `InvalidPortfolioFileException`. The sync service calls it before saving and records the error in `last_error` when it fails.
 - **Base URL in configuration**: it comes from `github.api.base-url`, so tests can point the client at a local server.
 
 `GithubClientTest` uses [WireMock](https://wiremock.org/) to run a real HTTP server on a random port in place of GitHub. It covers a successful read and a 404 for both calls, and needs neither Docker nor internet access.
@@ -180,9 +180,9 @@ Key decisions:
 `SyncService.sync(repoName)` turns one repository into a stored project:
 
 1. Reads the repository metadata.
-2. Stops if the `portfolio` topic is missing (guard clause: nothing is fetched or saved).
-3. Reads `portfolio.json` and validates it.
-4. Calls `ProjectService.saveOrUpdate`, which looks the project up by `github_repo_id`: if it exists, it is updated; if not, it is created.
+2. Stops if the `portfolio` topic is missing: an existing project is hidden (`visible = false`) and `portfolio.json` is never requested (guard clause).
+3. Reads `portfolio.json` and validates it. If the file is missing (`PortfolioFileNotFoundException`) or invalid (`InvalidPortfolioFileException`), the project is hidden, the exception message is stored in `last_error`, and the exception is thrown again.
+4. Calls `ProjectService.saveOrUpdate`, which looks the project up by `github_repo_id`: if it exists, it is updated (visible again, `last_error` cleared); if not, it is created.
 
 Key decisions:
 
@@ -190,8 +190,11 @@ Key decisions:
 - **One update method instead of setters**: `Project.updateFromGithub(...)` changes every field that comes from GitHub and sets `syncedAt` in one call, so no caller can update half a project. `github_repo_id` is not part of it: it is the identity.
 - **Update without `save`**: `saveOrUpdate` is `@Transactional`. The project loaded by `findByGithubRepoId` is managed by Hibernate, which detects the changes (dirty checking) and writes the `UPDATE` when the transaction commits. Only a new project needs `save`.
 - **Safe defaults for optional fields**: a missing `stack` becomes an empty list (the column is `NOT NULL`), and a missing `featured` becomes `false` with `Boolean.TRUE.equals(...)`, avoiding a `NullPointerException` on unboxing.
+- **Hiding keeps the last valid version**: `Project.hide()` only flips `visible`, so the title, description and stack of the last valid sync stay in the database and come back when the file is fixed.
+- **Record, then rethrow**: the `catch` hides the project, stores the reason and throws the same exception again, so the webhook flow can still mark the delivery as `FAILED`. The order matters: a `throw` first would skip the other two steps.
+- **Only the expected failures are caught**: the `catch` lists the two portfolio-file exceptions. A GitHub 5xx or a database error is not a problem with the file, so it is not hidden or recorded as one and goes up untouched.
 
-`SyncServiceTest` runs against a real PostgreSQL (Testcontainers) with `GithubClient` replaced by a Mockito mock (`@MockitoBean`). It covers a new repository (one project created), the same repository synced twice with a new title (still one project, title updated) and a repository without the topic (nothing saved, `portfolio.json` never requested).
+`SyncServiceTest` runs against a real PostgreSQL (Testcontainers) with `GithubClient` replaced by a Mockito mock (`@MockitoBean`). It covers a new repository (one project created), the same repository synced twice with a new title (still one project, title updated), a repository without the topic (nothing saved, `portfolio.json` never requested), a project that loses the topic (hidden, data kept), a missing file and an invalid file (hidden, `last_error` stored, exception thrown, last valid version kept) and a fixed file after an error (visible again, `last_error` cleared).
 
 ## Project structure
 
@@ -280,7 +283,7 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Idempotency by delivery id
   - [x] Read repository topics and metadata
   - [x] Sync: create or update the project
-  - [ ] Hide projects that lose the topic or the file, keep the last valid version, store `last_error`
+  - [x] Hide projects that lose the topic or the file, keep the last valid version, store `last_error`
   - [ ] Run the sync when a `push` delivery arrives
 - [ ] **Sprint 4 — Admin and ordering:** token-protected manual resync, listing order
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions

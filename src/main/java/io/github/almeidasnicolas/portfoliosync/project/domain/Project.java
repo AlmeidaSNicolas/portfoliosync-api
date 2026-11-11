@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.project.domain;
 
+import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
 import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -67,6 +68,17 @@ public class Project {
         this.repoName = repoName;
         this.htmlUrl = htmlUrl;
         this.syncedAt = Instant.now();
+
+        this.visible = true;
+        this.lastError = null;
+    }
+
+    public void hide(){
+        this.visible = false;
+    }
+
+    public void errorRegister(String message){
+        this.lastError = message;
     }
 
 }

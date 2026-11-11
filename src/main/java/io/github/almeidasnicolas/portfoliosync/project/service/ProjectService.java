@@ -72,4 +72,17 @@ public class ProjectService {
 
     }
 
+    @Transactional
+    public void hide(Long githubRepoID){
+        Optional<Project> existing = projectRepository.findByGithubRepoId(githubRepoID);
+        existing.ifPresent(project -> project.hide());
+    }
+
+    @Transactional
+    public void registerError(Long githubRepoID, String message){
+        Optional<Project> existing = projectRepository.findByGithubRepoId(githubRepoID);
+        existing.ifPresent(project -> project.errorRegister(message));
+
+    }
+
 }

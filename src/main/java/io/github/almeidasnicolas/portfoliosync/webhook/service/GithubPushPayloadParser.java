@@ -4,12 +4,12 @@ import io.github.almeidasnicolas.portfoliosync.webhook.dto.GithubPushBody;
 import io.github.almeidasnicolas.portfoliosync.webhook.dto.GithubPushRepository;
 import io.github.almeidasnicolas.portfoliosync.webhook.exception.InvalidWebhookPayloadFormatException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 @RequiredArgsConstructor
-@Service
-public class ExtractDataFromGithubPush {
+@Component
+public class GithubPushPayloadParser {
 
     private final JsonMapper jsonMapper;
 

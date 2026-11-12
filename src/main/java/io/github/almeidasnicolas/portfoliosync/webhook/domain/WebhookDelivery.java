@@ -3,6 +3,7 @@ package io.github.almeidasnicolas.portfoliosync.webhook.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -39,4 +40,26 @@ public class WebhookDelivery {
         this.event = event;
         this.status = DeliveryStatus.RECEIVED;
     }
+
+    public void markProcessed(){
+        this.status = DeliveryStatus.PROCESSED;
+        this.processedAt = Instant.now();
+    }
+
+    public void markIgnored(){
+        this.status = DeliveryStatus.IGNORED;
+        this.processedAt = Instant.now();
+    }
+
+    public void markFailed(String errorMessage){
+        this.status = DeliveryStatus.FAILED;
+        this.errorMessage = errorMessage;
+        this.processedAt = Instant.now();
+    }
+
+    public void recordRepository(Long githubRepoId, String repoName){
+        this.githubRepoId = githubRepoId;
+        this.repoName = repoName;
+    }
+
 }

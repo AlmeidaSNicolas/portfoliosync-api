@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 2 are done, and Sprint 3 is underway. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature and records each delivery once. A tested sync service already turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Still missing in Sprint 3: calling the sync from the webhook. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Next: Sprint 4 (token-protected manual resync, listing order). See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -141,8 +141,10 @@ Receives GitHub webhook deliveries. It is called by GitHub, not by the site.
 
 | Response | When |
 | --- | --- |
-| `200 OK` | valid signature; the delivery is recorded (a repeated delivery id is accepted but not recorded again) |
+| `200 OK` | valid signature and the delivery was handled: a `push` was synced (`PROCESSED`), a `ping` was ignored (`IGNORED`), or the delivery id was already seen (nothing is done again) |
+| `400 Bad Request` | the `push` body has no `repository.name` |
 | `401 Unauthorized` | signature missing, malformed or wrong |
+| `500 Internal Server Error` | the sync or the parsing failed; the delivery is stored as `FAILED` with the error message |
 
 How it works:
 
@@ -151,6 +153,12 @@ How it works:
 - **Missing signature is a 401, not a 400**: the header is declared with `required = false`, so a request without it reaches the validator and gets the same answer as a wrong signature.
 - **Secret from the environment**: `github.webhook.secret=${GITHUB_WEBHOOK_SECRET}` has no default value, so the app refuses to start without it instead of running with a guessable secret.
 - **Idempotency in the database**: `WebhookDeliveryService` inserts the delivery with `saveAndFlush`; GitHub retries reuse the same `X-GitHub-Delivery`, and the `UNIQUE` constraint on `delivery_id` rejects them (`DataIntegrityViolationException` → "already seen"). The database decides atomically, so two retries arriving at the same time cannot both pass.
+- **Every delivery ends in a status**: a new `ping` is marked `IGNORED`. A `push` records the repository (`github_repo_id`, `repo_name`) *before* the sync, so a `FAILED` row still says which repository it was, then runs the sync and is marked `PROCESSED`.
+- **Record, then rethrow**: the controller catches `RuntimeException` around parse, record and sync, calls `markFailed` with the message and throws the same exception again, so no failure leaves a delivery stuck in `RECEIVED` and the client still gets an error. A `FAILED` delivery is never reprocessed; a manual resync (Sprint 4) covers transient failures.
+- **Status changes without `save`**: the `mark...` methods of `WebhookDeliveryService` are `@Transactional` and load the delivery with `findOrThrow`. The loaded entity is managed by Hibernate, which writes the `UPDATE` at commit (dirty checking). A missing row throws `WebhookDeliveryNotFoundException` and is left as a 500 on purpose: after `registerIfNew` the row always exists, so its absence is a bug, not a client error.
+- **Events other than `push`**: only `ping` is ignored explicitly today; any other event type would go through the `push` path.
+
+`WebhookControllerTest` (MockMvc, `WebhookDeliveryService` and `SyncService` mocked) covers signature, repeated delivery, `ping` and `push`: the order record → sync → processed (`InOrder`) and the failure path (`markFailed`, exception rethrown, `markProcessed` never called). `WebhookDeliveryServiceTest` runs against PostgreSQL (Testcontainers) and checks that each transition is stored, including `processed_at` and `error_message`, and that an unknown delivery throws.
 
 Interactive docs (springdoc): <http://localhost:8080/swagger-ui.html>
 
@@ -216,7 +224,7 @@ io.github.almeidasnicolas.portfoliosync
 │   └── exception/    PortfolioFileNotFoundException, RepositoryNotFoundException, InvalidPortfolioFileException
 ├── webhook/
 │   ├── controller/   WebhookController (POST /webhooks/github)
-│   ├── service/      HmacValidator, WebhookDeliveryService (idempotency)
+│   ├── service/      HmacValidator, GithubPushPayloadParser, WebhookDeliveryService (idempotency, status)
 │   ├── repository/   WebhookDeliveryRepository
 │   └── domain/       WebhookDelivery (entity), DeliveryStatus
 ├── sync/
@@ -277,14 +285,14 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 - [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
 - [x] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
 - [x] **Sprint 2 — GitHub client:** read `portfolio.json`, JSON validation, WireMock tests
-- [ ] **Sprint 3 — Webhook and sync** (in progress)
+- [x] **Sprint 3 — Webhook and sync**
   - [x] HMAC signature check
   - [x] `POST /webhooks/github` (401 on an invalid signature)
   - [x] Idempotency by delivery id
   - [x] Read repository topics and metadata
   - [x] Sync: create or update the project
   - [x] Hide projects that lose the topic or the file, keep the last valid version, store `last_error`
-  - [ ] Run the sync when a `push` delivery arrives
+  - [x] Run the sync when a `push` delivery arrives
 - [ ] **Sprint 4 — Admin and ordering:** token-protected manual resync, listing order
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions
 - [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback

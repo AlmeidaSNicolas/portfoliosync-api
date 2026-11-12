@@ -42,16 +42,23 @@ Package by feature, then by layer: `project`, `github`, `webhook`, `sync`, `shar
 
 ## Current state (update at the end of each session)
 
-Updated 2026-11-11 (end of the evening session). Working branch: `sprint-3-webhook` (not `main`), PR #3 still a draft. Sprints 0 to 2 done; Sprint 3 has one item left.
+Updated 2026-11-12 (end of the day session). Sprints 0 to 3 are done; the last Sprint 3 commits are on branch `sprint-3-webhook`, PR #3 (draft until merged into `main`).
 
-Done and committed (last commits `d7157e4`, `09af4ed`): HMAC check, `POST /webhooks/github`, idempotency by delivery id, repository metadata and topics, sync create/update, hide on lost topic, hide + `last_error` + rethrow on a missing or invalid `portfolio.json`, tests for all of that (`SyncServiceTest`, 7 tests), README and PR checklist.
+What the webhook flow does now (`WebhookController.receiveDelivery`): HMAC (401) → `registerIfNew` (repeated: 200 and stop) → `ping`: `markIgnored` and 200 → anything else: inside one `try`, `payloadParser.parse(body)`, `recordRepository`, `syncService.sync(name)`, `markProcessed`; `catch (RuntimeException)`: `markFailed(deliveryId, message)` and rethrow.
 
-Last item of Sprint 3, in progress and uncommitted:
+Who wrote what in the final stretch (be honest about it in interviews): Nicolas wrote the entity transitions, `findByDeliveryId`, the `ping` branch, the new constructor fields and the `try` with parse/record/sync/markProcessed. Claude wrote, at his explicit request: the four `WebhookDeliveryService` methods and `WebhookDeliveryNotFoundException`, the `catch` block, the `ping`/`push` tests in `WebhookControllerTest` and the new tests in `WebhookDeliveryServiceTest`. He did not yet explain the `@Transactional`/dirty-checking questions in his own words (he skipped them).
 
-- Created: `webhook/dto/GithubPushBody(repository)`, `webhook/dto/GithubPushRepository(id, name)`, `webhook/exception/InvalidWebhookPayloadFormatException`, `webhook/service/ExtractDataFromGithubPush` (reads the `byte[]` body with `JsonMapper`, rejects a missing `repository.name`) and a 400 handler for the new exception in `GlobalExceptionHandler`. No tests yet; names in `ExtractDataFromGithubPush` (class and method `dataRetur`) are still placeholders he may rename.
-- Still to do: wire it into `WebhookController` after the HMAC check (only `push` runs the sync; `ping` does not), handle a repeated delivery (`registerIfNew` returns `false`; do not sync again), call `SyncService.sync`, set the delivery status (`PROCESSED`, `FAILED` when the sync throws, `IGNORED`), add methods to `WebhookDelivery` for status, `repoName`, `githubRepoId`, `processedAt`, `errorMessage`, tests (failure paths too), README roadmap.
-- Next session starts here: Nicolas writes the ordered steps of `receiveDelivery` in words (repeated delivery, `ping`, `push`) and Claude reviews the order before any code.
+Decisions taken: a repeated delivery returns 200; `ping` is `IGNORED`; GitHub does not retry on its own (a redelivery is manual and reuses the same `X-GitHub-Delivery`); a `FAILED` delivery is never reprocessed (Sprint 4's manual resync covers transient failures); the `catch` takes `RuntimeException` so no failure leaves a row in `RECEIVED`; the parse sits inside the `try`, so a broken body also closes the delivery as `FAILED`.
 
-Known loose ends: CI runs for PR #3 stuck in `queued` for 2h+ (GitHub queue, not the code; re-run if still stuck); `.DS_Store` was committed by mistake in `d7157e4` (remove with `git rm --cached` and add to `.gitignore`); a malformed `portfolio.json` makes Jackson throw an exception that `SyncService` does not catch; `GlobalExceptionHandler` in `shared` now imports a `webhook` exception (interview question: what happens when it imports one per feature?).
+Known loose ends (not blockers):
+- Only `ping` is ignored explicitly; an unknown event such as `issues` goes through the `push` path (probably one condition: anything that is not `push` is ignored).
+- Broken JSON still reaches the client as a 500 (Jackson's exception escapes the parser); a missing `repository.name` is a 400.
+- `repository.id` is not validated, but the upsert key is `github_repo_id`.
+- A malformed `portfolio.json` makes Jackson throw an exception that `SyncService` does not catch (it is not hidden or recorded as `last_error`).
+- `GlobalExceptionHandler` in `shared` imports a `webhook` exception (interview question: what happens when it imports one per feature?).
+- `WebhookDelivery` has an unused `ResponseEntity` import (a domain entity must not depend on Spring Web).
+- `shouldReturn200WhenSignatureIsValid` passes only because the Mockito default for `registerIfNew` is `false`; make the stub explicit.
+- Two old CI runs stuck in `queued` (`43098351744`, `43097443294`); cancel with `gh run cancel`.
+- Not written: plain unit tests of the entity methods and a `findByDeliveryId` test (the service tests already cover their effect).
 
-Next after Sprint 3: Sprint 4 (token-protected manual resync, listing order).
+Next: Sprint 4 (token-protected manual resync, listing order).

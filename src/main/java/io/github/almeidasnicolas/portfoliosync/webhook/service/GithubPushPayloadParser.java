@@ -13,7 +13,7 @@ public class ExtractDataFromGithubPush {
 
     private final JsonMapper jsonMapper;
 
-    public GithubPushBody dataRetur(byte[] body){
+    public GithubPushBody parse(byte[] body){
         GithubPushBody githubPushBody = jsonMapper.readValue(body, GithubPushBody.class);
 
         GithubPushRepository repository = githubPushBody.repository();

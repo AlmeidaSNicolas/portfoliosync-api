@@ -1,5 +1,9 @@
 package io.github.almeidasnicolas.portfoliosync.webhook.controller;
 
+
+import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
+import io.github.almeidasnicolas.portfoliosync.webhook.dto.GithubPushBody;
+import io.github.almeidasnicolas.portfoliosync.webhook.service.GithubPushPayloadParser;
 import io.github.almeidasnicolas.portfoliosync.webhook.service.HmacValidator;
 import io.github.almeidasnicolas.portfoliosync.webhook.service.WebhookDeliveryService;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,13 +19,15 @@ public class WebhookController {
     private final HmacValidator hmacValidator;
     private final String secretKey;
     private final WebhookDeliveryService webhookDeliveryService;
+    private final GithubPushPayloadParser payloadParser;
+    private final SyncService syncService;
 
-
-    public WebhookController(HmacValidator hmacValidator, @Value(value="${github.webhook.secret}") String key, WebhookDeliveryService webhookDeliveryService){
+    public WebhookController(HmacValidator hmacValidator, @Value(value="${github.webhook.secret}") String key, WebhookDeliveryService webhookDeliveryService, GithubPushPayloadParser payloadParser, SyncService syncService){
         this.hmacValidator = hmacValidator;
         this.secretKey = key;
         this.webhookDeliveryService = webhookDeliveryService;
-
+        this.payloadParser = payloadParser;
+        this.syncService = syncService;
     }
 
     @PostMapping
@@ -40,6 +46,22 @@ public class WebhookController {
         if (!isNewDelivery){
             return ResponseEntity.ok().build();
         }
+
+        if ("ping".equals(event)){
+            webhookDeliveryService.markIgnored(deliveryId);
+            return ResponseEntity.ok().build();
+        }
+
+        try{
+            GithubPushBody githubPushBody = payloadParser.parse(body);
+            webhookDeliveryService.recordRepository(deliveryId, githubPushBody.repository().id(), githubPushBody.repository().name() );
+            syncService.sync(githubPushBody.repository().name());
+            webhookDeliveryService.markProcessed(deliveryId);
+        }catch (RuntimeException e){
+            webhookDeliveryService.markFailed(deliveryId, e.getMessage());
+            throw e;
+        }
+
 
         return ResponseEntity.ok().build();
 

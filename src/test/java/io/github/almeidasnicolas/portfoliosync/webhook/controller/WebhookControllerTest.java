@@ -12,6 +12,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -44,5 +47,23 @@ public class WebhookControllerTest {
     @Test
     void notPresentAsignature() throws Exception{
         mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "ping").header("X-GitHub-Delivery", DELIVERY_ID).content(BODY)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturn200AndRegisterOnceWhenDeliveryIsRepeated() throws Exception{
+        when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "ping")).thenReturn(false);
+
+        mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "ping").header("X-Hub-Signature-256", HEADER).header("X-GitHub-Delivery", DELIVERY_ID).content(BODY)).andExpect(status().isOk());
+
+        verify(webhookDeliveryService, times(1)).registerIfNew(DELIVERY_ID, "ping");
+    }
+
+    @Test
+    void shouldReturn200AndRegisterOnceWhenDeliveryIsNew() throws Exception{
+        when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "ping")).thenReturn(true);
+
+        mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "ping").header("X-Hub-Signature-256", HEADER).header("X-GitHub-Delivery", DELIVERY_ID).content(BODY)).andExpect(status().isOk());
+
+        verify(webhookDeliveryService, times(1)).registerIfNew(DELIVERY_ID, "ping");
     }
 }

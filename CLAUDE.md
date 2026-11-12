@@ -42,7 +42,7 @@ Package by feature, then by layer: `project`, `github`, `webhook`, `sync`, `shar
 
 ## Current state (update at the end of each session)
 
-Updated 2026-11-12 (end of the day session). Sprints 0 to 3 are done; the last Sprint 3 commits are on branch `sprint-3-webhook`, PR #3 (draft until merged into `main`).
+Updated 2026-11-12 (end of the day session). Sprints 0 to 3 are done and merged: PR #3 was merged into `main` with a merge commit (`88c14c0`, all 24 branch commits kept; branch `sprint-3-webhook` deleted). `main` is the working base again; Sprint 4 starts from a new branch.
 
 What the webhook flow does now (`WebhookController.receiveDelivery`): HMAC (401) → `registerIfNew` (repeated: 200 and stop) → `ping`: `markIgnored` and 200 → anything else: inside one `try`, `payloadParser.parse(body)`, `recordRepository`, `syncService.sync(name)`, `markProcessed`; `catch (RuntimeException)`: `markFailed(deliveryId, message)` and rethrow.
 
@@ -58,7 +58,7 @@ Known loose ends (not blockers):
 - `GlobalExceptionHandler` in `shared` imports a `webhook` exception (interview question: what happens when it imports one per feature?).
 - `WebhookDelivery` has an unused `ResponseEntity` import (a domain entity must not depend on Spring Web).
 - `shouldReturn200WhenSignatureIsValid` passes only because the Mockito default for `registerIfNew` is `false`; make the stub explicit.
-- Two old CI runs stuck in `queued` (`43098351744`, `43097443294`); cancel with `gh run cancel`.
+- Two old CI runs stuck in `queued` for 25h+ (`43098351744`, `43097443294`): GitHub refuses both `gh run cancel` and `force-cancel` on them (stale state on GitHub's side, harmless; try again later or ignore).
 - Not written: plain unit tests of the entity methods and a `findByDeliveryId` test (the service tests already cover their effect).
 
 Next: Sprint 4 (token-protected manual resync, listing order).

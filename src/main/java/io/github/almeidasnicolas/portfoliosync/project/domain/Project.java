@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.project.domain;
 
+import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
 import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -54,6 +55,30 @@ public class Project {
         this.displayOrder = displayOrder;
         this.pushedAt = pushedAt;
         this.syncedAt = Instant.now();
+    }
+
+    public void updateFromGithub (LocalizedText title, LocalizedText description,List<String> stack, String demoUrl,boolean featured, Integer displayOrder, Instant pushedAt, String repoName, String htmlUrl){
+        this.title = title;
+        this.description = description;
+        this.stack = stack != null ? stack : new ArrayList<>();
+        this.demoUrl = demoUrl;
+        this.featured = featured;
+        this.displayOrder = displayOrder;
+        this.pushedAt = pushedAt;
+        this.repoName = repoName;
+        this.htmlUrl = htmlUrl;
+        this.syncedAt = Instant.now();
+
+        this.visible = true;
+        this.lastError = null;
+    }
+
+    public void hide(){
+        this.visible = false;
+    }
+
+    public void errorRegister(String message){
+        this.lastError = message;
     }
 
 }

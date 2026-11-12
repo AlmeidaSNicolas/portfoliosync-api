@@ -1,4 +1,10 @@
-package io.github.almeidasnicolas.portfoliosync.github;
+package io.github.almeidasnicolas.portfoliosync.github.client;
+
+import io.github.almeidasnicolas.portfoliosync.github.dto.ContentDTO;
+import io.github.almeidasnicolas.portfoliosync.github.dto.PortfolioFile;
+import io.github.almeidasnicolas.portfoliosync.github.dto.RepoMetadata;
+import io.github.almeidasnicolas.portfoliosync.github.exception.PortfolioFileNotFoundException;
+import io.github.almeidasnicolas.portfoliosync.github.exception.RepositoryNotFoundException;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -30,7 +36,20 @@ public class GithubClient {
         }catch (HttpClientErrorException.NotFound e){
             throw new PortfolioFileNotFoundException("portfolio.json not found in repo: " + repoName, e );
         }
-
-
     }
+
+    public RepoMetadata getRepoMetadata(String repoName){
+        try{
+            RepoMetadata repoMetadata = restClient.get()
+                    .uri("/repos/AlmeidaSNicolas/{repo}", repoName)
+                    .retrieve()
+                    .body(RepoMetadata.class);
+
+            return repoMetadata;
+
+        }catch (HttpClientErrorException.NotFound e){
+            throw new RepositoryNotFoundException("repository not found: " + repoName, e );
+        }
+    }
+
 }

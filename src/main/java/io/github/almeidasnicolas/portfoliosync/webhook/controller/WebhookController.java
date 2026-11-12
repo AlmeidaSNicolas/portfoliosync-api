@@ -17,11 +17,11 @@ public class WebhookController {
     private final WebhookDeliveryService webhookDeliveryService;
 
 
-
     public WebhookController(HmacValidator hmacValidator, @Value(value="${github.webhook.secret}") String key, WebhookDeliveryService webhookDeliveryService){
         this.hmacValidator = hmacValidator;
         this.secretKey = key;
         this.webhookDeliveryService = webhookDeliveryService;
+
     }
 
     @PostMapping
@@ -36,7 +36,11 @@ public class WebhookController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        webhookDeliveryService.registerIfNew(deliveryId, event);
+        boolean isNewDelivery = webhookDeliveryService.registerIfNew(deliveryId, event);
+        if (!isNewDelivery){
+            return ResponseEntity.ok().build();
+        }
+
         return ResponseEntity.ok().build();
 
     }

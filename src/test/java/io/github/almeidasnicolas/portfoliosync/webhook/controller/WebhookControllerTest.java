@@ -127,4 +127,17 @@ class WebhookControllerTest {
         verify(webhookDeliveryService, never()).markProcessed(any());
     }
 
+    @Test
+    void shouldMarkFailedAndRethrowWhenSyncThrowsAnyOtherRuntimeException() throws Exception{
+        when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "push")).thenReturn(true);
+        doThrow(new IllegalStateException("unexpected failure")).when(syncService).sync("meu-projeto");
+
+        ServletException thrown = assertThrows(ServletException.class, () ->
+                mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "push").header("X-Hub-Signature-256", PUSH_HEADER).header("X-GitHub-Delivery", DELIVERY_ID).content(PUSH_BODY)));
+
+        assertInstanceOf(IllegalStateException.class, thrown.getCause());
+        verify(webhookDeliveryService).markFailed(DELIVERY_ID, "unexpected failure");
+        verify(webhookDeliveryService, never()).markProcessed(any());
+    }
+
 }

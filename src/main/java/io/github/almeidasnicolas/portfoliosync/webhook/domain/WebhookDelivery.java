@@ -3,7 +3,6 @@ package io.github.almeidasnicolas.portfoliosync.webhook.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 import java.util.UUID;

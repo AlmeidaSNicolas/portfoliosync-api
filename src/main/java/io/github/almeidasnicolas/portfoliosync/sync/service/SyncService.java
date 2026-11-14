@@ -36,8 +36,6 @@ public class SyncService {
         }
         projectService.saveOrUpdate(repoMetadata, portfolioFile);
 
-
-
     }
 
 

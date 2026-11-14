@@ -24,6 +24,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -47,8 +48,6 @@ class WebhookControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-
 
     @Test
     void shouldReturn200WhenSignatureIsValid() throws Exception{
@@ -102,6 +101,21 @@ class WebhookControllerTest {
     }
 
     @Test
+    void shouldMarkIgnoredAndSkipSyncWhenNewDeliveryIsAnUnknownEvent() throws Exception{
+        // "issues" carries a valid push-shaped body on purpose: if the controller wrongly
+        // took the push path, the parse would succeed and the sync would run.
+        when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "issues")).thenReturn(true);
+
+        mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "issues").header("X-Hub-Signature-256", PUSH_HEADER).header("X-GitHub-Delivery", DELIVERY_ID).content(PUSH_BODY)).andExpect(status().isOk());
+
+        verify(webhookDeliveryService).markIgnored(DELIVERY_ID);
+        verify(webhookDeliveryService, never()).recordRepository(any(), any(), any());
+        verify(webhookDeliveryService, never()).markProcessed(any());
+        verify(webhookDeliveryService, never()).markFailed(any(), any());
+        verifyNoInteractions(syncService);
+    }
+
+    @Test
     void shouldRecordSyncAndMarkProcessedInOrderWhenPushIsNew() throws Exception{
         when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "push")).thenReturn(true);
 
@@ -139,5 +153,7 @@ class WebhookControllerTest {
         verify(webhookDeliveryService).markFailed(DELIVERY_ID, "unexpected failure");
         verify(webhookDeliveryService, never()).markProcessed(any());
     }
+
+
 
 }

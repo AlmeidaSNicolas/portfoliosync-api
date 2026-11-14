@@ -47,7 +47,8 @@ public class WebhookController {
             return ResponseEntity.ok().build();
         }
 
-        if ("ping".equals(event)){
+
+        if (!"push".equals(event)){
             webhookDeliveryService.markIgnored(deliveryId);
             return ResponseEntity.ok().build();
         }

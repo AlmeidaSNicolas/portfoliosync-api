@@ -307,9 +307,23 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 
 ## Roadmap
 
-- [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
-- [x] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
-- [x] **Sprint 2 — GitHub client:** read `portfolio.json`, JSON validation, WireMock tests
+- [x] **Sprint 0 — Setup**
+  - [x] Spring Boot project with PostgreSQL 17 in Docker Compose
+  - [x] Flyway owns the schema (first migration: `projects` and `webhook_deliveries`)
+  - [x] README with the data model
+  - [x] CI running `./mvnw verify` on GitHub Actions
+- [x] **Sprint 1 — Projects**
+  - [x] `Project` entity and repository for visible projects
+  - [x] Sample data for the `dev` profile
+  - [x] `ProjectResponse` DTO and `ProjectService` (one language per response)
+  - [x] `GET /api/projects` with the `lang` parameter
+  - [x] 400 problem detail (RFC 9457) for an unsupported language
+- [x] **Sprint 2 — GitHub client**
+  - [x] Read `portfolio.json` through the Contents API with `RestClient`
+  - [x] Decode the Base64 content and map it to the `PortfolioFile` record
+  - [x] Own exception when the file does not exist (404)
+  - [x] `PortfolioValidator`: title and description required in `es` and `en`
+  - [x] Base URL in configuration and WireMock tests (success and 404)
 - [x] **Sprint 3 — Webhook and sync**
   - [x] HMAC signature check
   - [x] `POST /webhooks/github` (401 on an invalid signature)

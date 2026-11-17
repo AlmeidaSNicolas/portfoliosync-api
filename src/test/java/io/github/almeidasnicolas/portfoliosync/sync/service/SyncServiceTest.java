@@ -31,7 +31,7 @@ import java.util.List;
 
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "github.webhook.secret=qualquerTeste")
+@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste"})
 public class SyncServiceTest {
 
     @MockitoBean

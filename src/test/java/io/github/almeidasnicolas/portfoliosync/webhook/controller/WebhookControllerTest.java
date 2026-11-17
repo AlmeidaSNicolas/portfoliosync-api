@@ -1,6 +1,7 @@
 package io.github.almeidasnicolas.portfoliosync.webhook.controller;
 
 import io.github.almeidasnicolas.portfoliosync.github.exception.RepositoryNotFoundException;
+import io.github.almeidasnicolas.portfoliosync.shared.security.SecurityConfig;
 import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
 import io.github.almeidasnicolas.portfoliosync.webhook.service.GithubPushPayloadParser;
 import io.github.almeidasnicolas.portfoliosync.webhook.service.HmacValidator;
@@ -30,8 +31,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Import({HmacValidator.class, GithubPushPayloadParser.class})
-@WebMvcTest(controllers = WebhookController.class, properties = "github.webhook.secret=It's a Secret to Everybody")
+@Import({HmacValidator.class, GithubPushPayloadParser.class, SecurityConfig.class})
+@WebMvcTest(controllers = WebhookController.class, properties = {"github.webhook.secret=It's a Secret to Everybody", "admin.token.secret=qualquerTeste"})
 class WebhookControllerTest {
 
     private static final byte[] BODY = "Hello, World!".getBytes(StandardCharsets.UTF_8);

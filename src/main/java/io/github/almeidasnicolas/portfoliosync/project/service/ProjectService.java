@@ -5,6 +5,7 @@ import io.github.almeidasnicolas.portfoliosync.github.dto.RepoMetadata;
 import io.github.almeidasnicolas.portfoliosync.project.domain.Project;
 import io.github.almeidasnicolas.portfoliosync.project.dto.ProjectResponse;
 import io.github.almeidasnicolas.portfoliosync.project.repository.ProjectRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -15,13 +16,18 @@ import java.util.Optional;
 @Service
 public class ProjectService {
     private final ProjectRepository projectRepository;
+    private static final Sort SORT = Sort.by(Sort.Order.desc("featured"),
+            Sort.Order.asc("displayOrder").nullsLast(),
+            Sort.Order.desc("pushedAt")
+    );
+
 
     public ProjectService(ProjectRepository projectRepository) {
         this.projectRepository = projectRepository;
     }
 
     public List<ProjectResponse> listVisible(String lang){
-        List<Project> projects = projectRepository.findByVisibleTrue();
+        List<Project> projects = projectRepository.findByVisible(true, SORT);
 
 
         return projects.stream().map(project -> new ProjectResponse(project.getRepoName()
@@ -84,5 +90,7 @@ public class ProjectService {
         existing.ifPresent(project -> project.errorRegister(message));
 
     }
+
+
 
 }

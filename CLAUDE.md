@@ -65,6 +65,8 @@ Known loose ends (not blockers):
 - Two old CI runs stuck in `queued` for 25h+ (`43098351744`, `43097443294`): GitHub refuses both `gh run cancel` and `force-cancel` on them (stale state on GitHub's side, harmless; try again later or ignore).
 - Not written: plain unit tests of the entity methods and a `findByDeliveryId` test (the service tests already cover their effect).
 
+Pending reminder (Nicolas asked to keep it here): `ADMIN_TOKEN` is not defined on his machine yet, and it will be defined later (Sprint 5). Without it the app does not start with `spring-boot:run`; the tests already work (they set `admin.token.secret` in their annotations). At the start of every new session, remind him that it is still undefined. Open question for him: define it together in the session, or only when he asks. Claude does not define it on its own.
+
 Next (rest of Sprint 4, new concepts for him, so give the full step-by-step):
 1. Admin token: read it from an environment variable (no default, like `GITHUB_WEBHOOK_SECRET`), a filter in `shared/security` that reads the header and compares in constant time, registered in the chain with `addFilterBefore`; `/admin/**` turns from `denyAll` to `authenticated`. Today an `/admin/**` call gets 403 (no entry point yet); the filter step must also make a missing or wrong token a 401. He planned to watch Giuliana Bezerra's "Spring Security 6 + JWT" class first (focus: the filter that reads the header, not JWT).
 2. `POST /admin/sync`: full manual resync, also hiding projects that lost the topic (question D2 in Notion).

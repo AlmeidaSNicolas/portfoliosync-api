@@ -18,7 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "github.webhook.secret=qualquerTeste")
+@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste"})
 class ProjectServiceTest {
 
     private static final Instant BASE = Instant.parse("2026-01-01T00:00:00Z");

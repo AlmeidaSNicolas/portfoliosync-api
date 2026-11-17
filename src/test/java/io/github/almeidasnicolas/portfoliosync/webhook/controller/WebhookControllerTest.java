@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Import({HmacValidator.class, GithubPushPayloadParser.class, SecurityConfig.class})
-@WebMvcTest(controllers = WebhookController.class, properties = "github.webhook.secret=It's a Secret to Everybody")
+@WebMvcTest(controllers = WebhookController.class, properties = {"github.webhook.secret=It's a Secret to Everybody", "admin.token.secret=qualquerTeste"})
 class WebhookControllerTest {
 
     private static final byte[] BODY = "Hello, World!".getBytes(StandardCharsets.UTF_8);

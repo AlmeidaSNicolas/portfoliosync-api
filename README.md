@@ -337,6 +337,9 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Tests against PostgreSQL (Testcontainers): the three criteria and hidden projects left out
   - [x] Spring Security: public endpoints open, CSRF off, stateless, everything else denied by default
   - [ ] Admin endpoints need a token (from an environment variable, compared in constant time)
+    - [x] `AdminTokenFilter` reads the `X-Admin-Token` header and compares it in constant time (`shared/security`)
+    - [ ] Register the filter in the security chain and switch `/admin/**` from `denyAll` to `authenticated`
+    - [ ] Answer a missing or wrong token with 401 (authentication entry point)
   - [ ] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
   - [ ] Tests for the admin endpoint (no token, wrong token, valid token)
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions

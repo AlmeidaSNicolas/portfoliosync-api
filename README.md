@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Next: Sprint 4 (token-protected manual resync, listing order). See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Sprint 4 is in progress: the listing is sorted (featured first, then display order, then the latest push), and Spring Security is in place, with the public endpoints open and everything else denied by default. Next: the admin token and `POST /admin/sync` (full manual resync). See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -70,7 +70,7 @@ erDiagram
     webhook_deliveries {
         bigint id PK
         uuid delivery_id UK "X-GitHub-Delivery header"
-        varchar event "push | ping"
+        varchar event "push, ping or any other event name"
         bigint github_repo_id "nullable"
         varchar repo_name "nullable"
         varchar status "RECEIVED | PROCESSED | IGNORED | FAILED"
@@ -116,6 +116,8 @@ curl "http://localhost:8080/api/projects?lang=en"
 ]
 ```
 
+The order is fixed: featured projects first, then `display_order` ascending (projects without an order go last), then the most recent push first. The sort is done by the database: `ProjectService` passes a Spring Data `Sort` (`featured DESC, displayOrder ASC NULLS LAST, pushedAt DESC`) to `findByVisible(true, sort)`, so a future page of results comes already sorted. `ProjectServiceTest` runs against PostgreSQL (Testcontainers) and checks the three criteria and that a hidden project is left out even when it is featured.
+
 The response is a DTO (`ProjectResponse`), never the JPA entity: internal fields such as `lastError` or `syncedAt` stay inside the API, and the JSON does not change when the table does.
 
 An unsupported language returns `400 Bad Request` as an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem detail, produced by a global `@RestControllerAdvice`:
@@ -141,7 +143,7 @@ Receives GitHub webhook deliveries. It is called by GitHub, not by the site.
 
 | Response | When |
 | --- | --- |
-| `200 OK` | valid signature and the delivery was handled: a `push` was synced (`PROCESSED`), a `ping` was ignored (`IGNORED`), or the delivery id was already seen (nothing is done again) |
+| `200 OK` | valid signature and the delivery was handled: a `push` was synced (`PROCESSED`), any other event (`ping`, `issues`…) was ignored (`IGNORED`), or the delivery id was already seen (nothing is done again) |
 | `400 Bad Request` | the `push` body has no `repository.name` |
 | `401 Unauthorized` | signature missing, malformed or wrong |
 | `500 Internal Server Error` | the sync or the parsing failed; the delivery is stored as `FAILED` with the error message |
@@ -153,14 +155,36 @@ How it works:
 - **Missing signature is a 401, not a 400**: the header is declared with `required = false`, so a request without it reaches the validator and gets the same answer as a wrong signature.
 - **Secret from the environment**: `github.webhook.secret=${GITHUB_WEBHOOK_SECRET}` has no default value, so the app refuses to start without it instead of running with a guessable secret.
 - **Idempotency in the database**: `WebhookDeliveryService` inserts the delivery with `saveAndFlush`; GitHub retries reuse the same `X-GitHub-Delivery`, and the `UNIQUE` constraint on `delivery_id` rejects them (`DataIntegrityViolationException` → "already seen"). The database decides atomically, so two retries arriving at the same time cannot both pass.
-- **Every delivery ends in a status**: a new `ping` is marked `IGNORED`. A `push` records the repository (`github_repo_id`, `repo_name`) *before* the sync, so a `FAILED` row still says which repository it was, then runs the sync and is marked `PROCESSED`.
+- **Every delivery ends in a status**: a new delivery whose event is not `push` (the `ping` test, or any other event) is marked `IGNORED` and never reaches the sync. A `push` records the repository (`github_repo_id`, `repo_name`) *before* the sync, so a `FAILED` row still says which repository it was, then runs the sync and is marked `PROCESSED`.
 - **Record, then rethrow**: the controller catches `RuntimeException` around parse, record and sync, calls `markFailed` with the message and throws the same exception again, so no failure leaves a delivery stuck in `RECEIVED` and the client still gets an error. A `FAILED` delivery is never reprocessed; a manual resync (Sprint 4) covers transient failures.
 - **Status changes without `save`**: the `mark...` methods of `WebhookDeliveryService` are `@Transactional` and load the delivery with `findOrThrow`. The loaded entity is managed by Hibernate, which writes the `UPDATE` at commit (dirty checking). A missing row throws `WebhookDeliveryNotFoundException` and is left as a 500 on purpose: after `registerIfNew` the row always exists, so its absence is a bug, not a client error.
-- **Events other than `push`**: only `ping` is ignored explicitly today; any other event type would go through the `push` path.
+- **Only `push` syncs**: the check is "is it `push`?" and not "is it `ping`?", so an event GitHub adds later is ignored by default instead of going through the sync.
 
-`WebhookControllerTest` (MockMvc, `WebhookDeliveryService` and `SyncService` mocked) covers signature, repeated delivery, `ping` and `push`: the order record → sync → processed (`InOrder`) and the failure path (`markFailed`, exception rethrown, `markProcessed` never called). `WebhookDeliveryServiceTest` runs against PostgreSQL (Testcontainers) and checks that each transition is stored, including `processed_at` and `error_message`, and that an unknown delivery throws.
+`WebhookControllerTest` (MockMvc, `WebhookDeliveryService` and `SyncService` mocked, `SecurityConfig` imported so the real security rules apply) covers signature, repeated delivery, `ping`, an unknown event and `push`: the order record → sync → processed (`InOrder`) and the failure path (`markFailed`, exception rethrown, `markProcessed` never called). `WebhookDeliveryServiceTest` runs against PostgreSQL (Testcontainers) and checks that each transition is stored, including `processed_at` and `error_message`, and that an unknown delivery throws.
 
 Interactive docs (springdoc): <http://localhost:8080/swagger-ui.html>
+
+## Security
+
+Spring Security is configured in `SecurityConfig` (`shared/security`), a single `SecurityFilterChain` bean. The rules are checked in order and the first match wins, so the specific ones come first and the catch-all comes last:
+
+| Route | Access |
+| --- | --- |
+| `GET /api/projects` | open |
+| `POST /webhooks/github` | open to Spring Security: the HMAC signature authenticates GitHub |
+| `GET /actuator/health` | open |
+| Swagger (`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`) | open (`GET`) |
+| `/error` | open, any method |
+| `/admin/**` | denied for now; becomes "authenticated" when the admin token filter exists |
+| anything else | denied |
+
+Key decisions:
+
+- **Deny by default**: a route that is not listed is denied, so a new endpoint is closed until someone opens it on purpose.
+- **CSRF disabled**: CSRF protects browser sessions, where the browser sends the cookie on its own. This API uses no cookies: GitHub is authenticated by the HMAC header, and the admin will be authenticated by a token header. With CSRF on, the webhook `POST` was rejected with a 403 before the access rules were even checked (the CSRF filter runs before the authorization filter).
+- **Stateless sessions** (`SessionCreationPolicy.STATELESS`): every request carries its own credentials, so the server keeps no session.
+- **`/error` is open for every method**: when a controller throws, the request is forwarded to `/error` with its original method. A `POST` from the webhook that fails must still return its real error (500), not a 401 or 403 from the security rules.
+- **No login page**: there is no `formLogin` or `httpBasic`; the API has no human users.
 
 ## GitHub client
 
@@ -230,14 +254,15 @@ io.github.almeidasnicolas.portfoliosync
 ├── sync/
 │   └── service/      SyncService (GitHub → validation → project upsert)
 └── shared/
-    └── exception/    GlobalExceptionHandler, UnsupportedLanguageException
+    ├── exception/    GlobalExceptionHandler, UnsupportedLanguageException
+    └── security/     SecurityConfig (access rules for every feature)
 ```
 
 ## Tech stack
 
-Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · WireMock · Docker Compose · Maven · GitHub Actions (CI)
+Java 21 · Spring Boot 4.1 · Spring Web MVC · Spring Data JPA (Hibernate) · Spring Security · PostgreSQL 17 · Flyway · springdoc-openapi · Actuator · Lombok · JUnit 5 · Testcontainers · WireMock · Docker Compose · Maven · GitHub Actions (CI)
 
-Planned: Bean Validation, Spring Security (admin endpoints), CD with GitHub Actions, deploy to Render + Neon.
+Planned: Bean Validation, CD with GitHub Actions, deploy to Render + Neon.
 
 ## Database migrations
 
@@ -282,9 +307,23 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
 
 ## Roadmap
 
-- [x] **Sprint 0 — Setup:** project skeleton, Docker Compose, Flyway, README with data model, CI running `./mvnw verify`
-- [x] **Sprint 1 — Projects:** entity, `GET /api/projects` with seed data, per-language DTOs, error handling
-- [x] **Sprint 2 — GitHub client:** read `portfolio.json`, JSON validation, WireMock tests
+- [x] **Sprint 0 — Setup**
+  - [x] Spring Boot project with PostgreSQL 17 in Docker Compose
+  - [x] Flyway owns the schema (first migration: `projects` and `webhook_deliveries`)
+  - [x] README with the data model
+  - [x] CI running `./mvnw verify` on GitHub Actions
+- [x] **Sprint 1 — Projects**
+  - [x] `Project` entity and repository for visible projects
+  - [x] Sample data for the `dev` profile
+  - [x] `ProjectResponse` DTO and `ProjectService` (one language per response)
+  - [x] `GET /api/projects` with the `lang` parameter
+  - [x] 400 problem detail (RFC 9457) for an unsupported language
+- [x] **Sprint 2 — GitHub client**
+  - [x] Read `portfolio.json` through the Contents API with `RestClient`
+  - [x] Decode the Base64 content and map it to the `PortfolioFile` record
+  - [x] Own exception when the file does not exist (404)
+  - [x] `PortfolioValidator`: title and description required in `es` and `en`
+  - [x] Base URL in configuration and WireMock tests (success and 404)
 - [x] **Sprint 3 — Webhook and sync**
   - [x] HMAC signature check
   - [x] `POST /webhooks/github` (401 on an invalid signature)
@@ -293,6 +332,15 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Sync: create or update the project
   - [x] Hide projects that lose the topic or the file, keep the last valid version, store `last_error`
   - [x] Run the sync when a `push` delivery arrives
-- [ ] **Sprint 4 — Admin and ordering:** token-protected manual resync, listing order
+- [ ] **Sprint 4 — Admin and ordering** (in progress)
+  - [x] Sort the listing: featured first, then `display_order` (nulls last), then the most recent push
+  - [x] Tests against PostgreSQL (Testcontainers): the three criteria and hidden projects left out
+  - [x] Spring Security: public endpoints open, CSRF off, stateless, everything else denied by default
+  - [ ] Admin endpoints need a token (from an environment variable, compared in constant time)
+    - [x] `AdminTokenFilter` reads the `X-Admin-Token` header and compares it in constant time (`shared/security`)
+    - [ ] Register the filter in the security chain and switch `/admin/**` from `denyAll` to `authenticated`
+    - [ ] Answer a missing or wrong token with 401 (authentication entry point)
+  - [ ] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
+  - [ ] Tests for the admin endpoint (no token, wrong token, valid token)
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions
 - [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback

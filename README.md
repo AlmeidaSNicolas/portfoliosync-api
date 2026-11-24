@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Sprint 4 is in progress: the listing is sorted (featured first, then display order, then the latest push), and Spring Security is in place, with the public endpoints open and everything else denied by default. Next: the admin token and `POST /admin/sync` (full manual resync). See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Sprint 4 is in progress: the listing is sorted (featured first, then display order, then the latest push), and Spring Security is in place, with the public endpoints open and everything else denied by default. Admin routes now need the `X-Admin-Token` header (401 without a valid one). Next: `POST /admin/sync` (full manual resync) and its tests. See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -175,7 +175,7 @@ Spring Security is configured in `SecurityConfig` (`shared/security`), a single 
 | `GET /actuator/health` | open |
 | Swagger (`/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`) | open (`GET`) |
 | `/error` | open, any method |
-| `/admin/**` | denied for now; becomes "authenticated" when the admin token filter exists |
+| `/admin/**` | authenticated: needs the `X-Admin-Token` header; a missing or wrong token gets 401 |
 | anything else | denied |
 
 Key decisions:
@@ -336,10 +336,11 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Sort the listing: featured first, then `display_order` (nulls last), then the most recent push
   - [x] Tests against PostgreSQL (Testcontainers): the three criteria and hidden projects left out
   - [x] Spring Security: public endpoints open, CSRF off, stateless, everything else denied by default
-  - [ ] Admin endpoints need a token (from an environment variable, compared in constant time)
+  - [x] Admin endpoints need a token (from an environment variable, compared in constant time)
     - [x] `AdminTokenFilter` reads the `X-Admin-Token` header and compares it in constant time (`shared/security`)
-    - [ ] Register the filter in the security chain and switch `/admin/**` from `denyAll` to `authenticated`
-    - [ ] Answer a missing or wrong token with 401 (authentication entry point)
+    - [x] Filter registered in the security chain and `/admin/**` switched from `denyAll` to `authenticated`
+    - [x] Missing or wrong token answered with 401 (authentication entry point)
+    - [ ] `ADMIN_TOKEN` defined on the local machine (planned for Sprint 5)
   - [ ] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
   - [ ] Tests for the admin endpoint (no token, wrong token, valid token)
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions

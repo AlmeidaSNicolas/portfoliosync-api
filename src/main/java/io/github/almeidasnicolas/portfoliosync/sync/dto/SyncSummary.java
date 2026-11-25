@@ -1,4 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.sync.dto;
 
-public record SyncSummary() {
+import java.util.List;
+
+public record SyncSummary(int total, int succeeded, int failed, List<SyncFailure> failures) {
 }

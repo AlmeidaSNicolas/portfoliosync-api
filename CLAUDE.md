@@ -15,11 +15,11 @@ Java 21, Spring Boot 4.1, Spring Web MVC, Spring Data JPA, PostgreSQL 17, Flyway
 
 ```bash
 docker compose up -d                                           # PostgreSQL on :5432
-GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # API on :8080 (add SPRING_PROFILES_ACTIVE=dev for seed data)
+ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # API on :8080 (add SPRING_PROFILES_ACTIVE=dev for seed data)
 ./mvnw verify                                                  # tests; Docker must be running (Testcontainers)
 ```
 
-`GITHUB_WEBHOOK_SECRET` has no default on purpose: the app must not start without it.
+`GITHUB_WEBHOOK_SECRET` and `ADMIN_TOKEN` have no default on purpose: the app must not start without them.
 
 ## Structure and rules
 

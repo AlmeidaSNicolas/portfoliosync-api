@@ -164,6 +164,22 @@ How it works:
 
 Interactive docs (springdoc): <http://localhost:8080/swagger-ui.html>
 
+### `POST /admin/sync`
+
+Full manual resync of every repository with the `portfolio` topic. Admin only: it needs the `X-Admin-Token` header. It runs synchronously, so the response comes after the whole batch.
+
+```bash
+curl -X POST http://localhost:8080/admin/sync -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+| Response | When |
+| --- | --- |
+| `200 OK` | the listing worked; the body is the summary of the batch (`total`, `succeeded`, `failed`, `failures` with `repoName` and `message` for each failed repository). Failures inside the batch do not change the status |
+| `401 Unauthorized` | token missing or wrong; nothing is listed or hidden |
+| `502 Bad Gateway` | the GitHub listing failed; nothing is hidden |
+
+An empty listing (no repository with the topic) answers `200` with `total: 0` and hides nothing.
+
 ## Security
 
 Spring Security is configured in `SecurityConfig` (`shared/security`), a single `SecurityFilterChain` bean. The rules are checked in order and the first match wins, so the specific ones come first and the catch-all comes last:
@@ -226,6 +242,8 @@ Key decisions:
 - **Record, then rethrow**: the `catch` hides the project, stores the reason and throws the same exception again, so the webhook flow can still mark the delivery as `FAILED`. The order matters: a `throw` first would skip the other two steps.
 - **Only the expected failures are caught**: the `catch` lists the two portfolio-file exceptions. A GitHub 5xx or a database error is not a problem with the file, so it is not hidden or recorded as one and goes up untouched.
 
+`SyncService.resyncAll()` is the full manual resync behind `POST /admin/sync`: it lists every repository with the `portfolio` topic on GitHub, syncs each one with `syncAll` (a failure in one repository is counted in the summary and does not stop the batch), and then hides the visible projects that are no longer in the listing. Two rules protect the data: a listing that fails hides nothing (the endpoint answers 502), and an empty listing hides nothing either, because an empty answer can also mean a search that went wrong without raising an error.
+
 `SyncServiceTest` runs against a real PostgreSQL (Testcontainers) with `GithubClient` replaced by a Mockito mock (`@MockitoBean`). It covers a new repository (one project created), the same repository synced twice with a new title (still one project, title updated), a repository without the topic (nothing saved, `portfolio.json` never requested), a project that loses the topic (hidden, data kept), a missing file and an invalid file (hidden, `last_error` stored, exception thrown, last valid version kept) and a fixed file after an error (visible again, `last_error` cleared).
 
 ## Project structure
@@ -245,14 +263,16 @@ io.github.almeidasnicolas.portfoliosync
 │   ├── client/       GithubClient (portfolio.json + repository metadata)
 │   ├── service/      PortfolioValidator
 │   ├── dto/          PortfolioFile, RepoMetadata, ContentDTO
-│   └── exception/    PortfolioFileNotFoundException, RepositoryNotFoundException, InvalidPortfolioFileException
+│   └── exception/    PortfolioFileNotFoundException, RepositoryNotFoundException, InvalidPortfolioFileException, GithubListingException
 ├── webhook/
 │   ├── controller/   WebhookController (POST /webhooks/github)
 │   ├── service/      HmacValidator, GithubPushPayloadParser, WebhookDeliveryService (idempotency, status)
 │   ├── repository/   WebhookDeliveryRepository
 │   └── domain/       WebhookDelivery (entity), DeliveryStatus
 ├── sync/
-│   └── service/      SyncService (GitHub → validation → project upsert)
+│   ├── controller/   SyncController (POST /admin/sync)
+│   ├── dto/          SyncSummary, SyncFailure
+│   └── service/      SyncService (GitHub → validation → project upsert, full resync)
 └── shared/
     ├── exception/    GlobalExceptionHandler, UnsupportedLanguageException
     └── security/     SecurityConfig (access rules for every feature)
@@ -278,7 +298,7 @@ Requirements: Java 21 and Docker.
 
 ```bash
 docker compose up -d                                       # starts PostgreSQL 17 on localhost:5432
-GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # runs Flyway migrations and starts the API on :8080
+ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # runs Flyway migrations and starts the API on :8080
 ```
 
 Health check: <http://localhost:8080/actuator/health>
@@ -286,7 +306,7 @@ Health check: <http://localhost:8080/actuator/health>
 To start with sample projects, run with the `dev` profile. `ProjectSeeder` inserts three projects when the table is empty and never runs in other environments:
 
 ```bash
-SPRING_PROFILES_ACTIVE=dev GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run
 ```
 
 Configuration comes from environment variables, with local defaults (the database ones match `compose.yaml`):
@@ -298,6 +318,7 @@ Configuration comes from environment variables, with local defaults (the databas
 | `DB_PASSWORD` | `portfoliosync` |
 | `GITHUB_API_URL` | `https://api.github.com` |
 | `GITHUB_WEBHOOK_SECRET` | none: **required**, the app does not start without it |
+| `ADMIN_TOKEN` | none: **required**, the app does not start without it (checked against the `X-Admin-Token` header) |
 
 Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be running):
 

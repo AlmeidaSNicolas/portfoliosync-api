@@ -78,6 +78,13 @@ public class ProjectService {
 
     }
 
+    @Transactional(readOnly = true)
+    public List<Long> visibleGithubRepoIds() {
+        return projectRepository.findByVisibleTrue().stream()
+                .map(Project::getGithubRepoId)
+                .toList();
+    }
+
     @Transactional
     public void hide(Long githubRepoID){
         Optional<Project> existing = projectRepository.findByGithubRepoId(githubRepoID);

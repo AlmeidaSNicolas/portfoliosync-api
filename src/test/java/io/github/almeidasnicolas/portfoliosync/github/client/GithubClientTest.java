@@ -35,8 +35,34 @@ public class GithubClientTest {
 
 
     @Test
+    void shouldSendGithubTokenInAuthorizationHeader(WireMockRuntimeInfo wm) {
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
+
+        stubFor(get(urlPathEqualTo("/repos/AlmeidaSNicolas/teste"))
+                .withHeader("Authorization", equalTo("Bearer qualquerTeste"))
+                .willReturn(aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"id\":1,\"name\":\"teste\",\"html_url\":\"url\",\"topics\":[\"portfolio\"],\"pushed_at\":\"2026-01-01T00:00:00Z\"}")));
+
+        RepoMetadata repo = githubClient.getRepoMetadata("teste");
+
+        assertEquals("teste", repo.name());
+    }
+
+    @Test
+    void shouldFailWhenGithubTokenDoesNotMatch(WireMockRuntimeInfo wm) {
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "tokenErrado");
+
+        stubFor(get(urlPathEqualTo("/repos/AlmeidaSNicolas/teste"))
+                .withHeader("Authorization", equalTo("Bearer qualquerTeste"))
+                .willReturn(aResponse().withStatus(200)));
+
+        assertThrows(RepositoryNotFoundException.class, () -> githubClient.getRepoMetadata("teste"));
+    }
+
+    @Test
     void shouldReturnPortfolioFileWhenRepoExists(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
 
         String portfolioJson = """
@@ -63,7 +89,7 @@ public class GithubClientTest {
 
     @Test
     public void shouldThrowPortfolioFileNotFoundExceptionWhenGithubReturns404(WireMockRuntimeInfo wireMockRuntimeInfo){
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlEqualTo("/repos/AlmeidaSNicolas/amendoinSalgado/contents/portfolio.json"))
                 .willReturn(aResponse()
@@ -74,7 +100,7 @@ public class GithubClientTest {
 
     @Test
     public void shouldThrowRepositoryNotFoundExceptionWhenGithubReturns404(WireMockRuntimeInfo wireMockRuntimeInfo){
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlEqualTo("/repos/AlmeidaSNicolas/amendoinSalgado"))
                 .willReturn(aResponse()
@@ -86,7 +112,7 @@ public class GithubClientTest {
 
     @Test
     public void shouldReturnRepoMetadataWhenRepoExists(WireMockRuntimeInfo wireMockRuntimeInfo){
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wireMockRuntimeInfo.getHttpBaseUrl(), "qualquerTeste");
 
         String repoJson = """
         {
@@ -133,7 +159,7 @@ public class GithubClientTest {
 
     @Test
     void shouldReturnAllReposAcrossPages(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlPathEqualTo("/search/repositories"))
                 .withQueryParam("page", equalTo("1"))
@@ -158,7 +184,7 @@ public class GithubClientTest {
 
     @Test
     void shouldReturnEmptyListWhenNoReposMatch(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlPathEqualTo("/search/repositories"))
                 .withQueryParam("page", equalTo("1"))
@@ -172,7 +198,7 @@ public class GithubClientTest {
 
     @Test
     void shouldThrowWhenSearchResultIsIncomplete(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlPathEqualTo("/search/repositories"))
                 .withQueryParam("page", equalTo("1"))
@@ -186,7 +212,7 @@ public class GithubClientTest {
 
     @Test
     void shouldThrowWhenPageIsEmptyBeforeReachingTotal(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlPathEqualTo("/search/repositories"))
                 .withQueryParam("page", equalTo("1"))
@@ -207,7 +233,7 @@ public class GithubClientTest {
 
     @Test
     void shouldThrowWithHttpCauseWhenSecondPageFails(WireMockRuntimeInfo wm) {
-        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl());
+        GithubClient githubClient = new GithubClient(new JsonMapper(), wm.getHttpBaseUrl(), "qualquerTeste");
 
         stubFor(get(urlPathEqualTo("/search/repositories"))
                 .withQueryParam("page", equalTo("1"))

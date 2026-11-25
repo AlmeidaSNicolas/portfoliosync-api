@@ -15,7 +15,7 @@ Java 21, Spring Boot 4.1, Spring Web MVC, Spring Data JPA, PostgreSQL 17, Flyway
 
 ```bash
 docker compose up -d                                           # PostgreSQL on :5432
-ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # API on :8080 (add SPRING_PROFILES_ACTIVE=dev for seed data)
+GITHUB_TOKEN=change-me-token ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # API on :8080 (add SPRING_PROFILES_ACTIVE=dev for seed data)
 ./mvnw verify                                                  # tests; Docker must be running (Testcontainers)
 ```
 

@@ -32,7 +32,7 @@ import java.util.List;
 
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste"})
+@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste", "github.token=qualquerTeste"})
 public class SyncServiceTest {
 
     @MockitoBean

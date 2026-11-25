@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Import(SecurityConfig.class)
-@WebMvcTest(controllers = SyncController.class, properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste"})
+@WebMvcTest(controllers = SyncController.class, properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste", "github.token=qualquerTeste"})
 class SyncControllerTest {
 
     @Autowired

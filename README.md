@@ -298,15 +298,24 @@ Requirements: Java 21 and Docker.
 
 ```bash
 docker compose up -d                                       # starts PostgreSQL 17 on localhost:5432
-ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # runs Flyway migrations and starts the API on :8080
+GITHUB_TOKEN=change-me-token ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run  # runs Flyway migrations and starts the API on :8080
 ```
 
 Health check: <http://localhost:8080/actuator/health>
 
+Trying the endpoints:
+
+- **In the browser** (GET only): <http://localhost:8080/api/projects?lang=en>, <http://localhost:8080/api/projects?lang=es> and the Swagger UI at <http://localhost:8080/swagger-ui.html>.
+- **POST routes** (`/webhooks/github`, `/admin/sync`) cannot be sent from the address bar. Use `curl` or Postman. For the admin resync, send the `X-Admin-Token` header:
+
+```bash
+curl -X POST http://localhost:8080/admin/sync -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
 To start with sample projects, run with the `dev` profile. `ProjectSeeder` inserts three projects when the table is empty and never runs in other environments:
 
 ```bash
-SPRING_PROFILES_ACTIVE=dev ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev GITHUB_TOKEN=change-me-token ADMIN_TOKEN=change-me-local GITHUB_WEBHOOK_SECRET=dev-secret-local ./mvnw spring-boot:run
 ```
 
 Configuration comes from environment variables, with local defaults (the database ones match `compose.yaml`):
@@ -319,6 +328,7 @@ Configuration comes from environment variables, with local defaults (the databas
 | `GITHUB_API_URL` | `https://api.github.com` |
 | `GITHUB_WEBHOOK_SECRET` | none: **required**, the app does not start without it |
 | `ADMIN_TOKEN` | none: **required**, the app does not start without it (checked against the `X-Admin-Token` header) |
+| `GITHUB_TOKEN` | none: **required**, a GitHub token sent as `Authorization: Bearer`; it raises the GitHub API rate limit, which is very low without one. Use a token with read-only access to public repositories, and never commit it |
 
 Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be running):
 

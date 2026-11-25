@@ -25,9 +25,12 @@ public class GithubClient {
     private final RestClient restClient;
     private static final int PAGE_SIZE = 100;
 
-    public GithubClient(JsonMapper jsonMapper, @Value("${github.api.base-url}") String url) {
+    public GithubClient(JsonMapper jsonMapper, @Value("${github.api.base-url}") String url, @Value("${github.token}") String token) {
         this.jsonMapper = jsonMapper;
-        this.restClient = RestClient.builder().baseUrl(url).build();
+        this.restClient = RestClient.builder()
+                .baseUrl(url)
+                .defaultHeader("Authorization", "Bearer " + token)
+                .build();
     }
 
     public PortfolioFile getPortfolioFile(String repoName){

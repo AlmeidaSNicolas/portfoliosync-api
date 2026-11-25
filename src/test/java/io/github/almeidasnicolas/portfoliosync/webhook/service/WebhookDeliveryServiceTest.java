@@ -16,7 +16,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste"})
+@SpringBootTest(properties = {"github.webhook.secret=qualquerTeste", "admin.token.secret=qualquerTeste", "github.token=qualquerTeste"})
 public class WebhookDeliveryServiceTest {
 
     @Autowired

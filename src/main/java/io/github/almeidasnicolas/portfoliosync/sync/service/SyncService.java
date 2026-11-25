@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -45,6 +47,28 @@ public class SyncService {
         return new SyncSummary(repos.size(), succeeded, failures.size(), failures);
     }
 
+    public SyncSummary resyncAll(){
+        List<RepoMetadata> repos = githubClient.listPortfolioRepos();
+
+        SyncSummary summary = syncAll(repos);
+
+        if (repos.isEmpty()){
+            return summary;
+        }
+
+        Set<Long> idsInGithub = repos.stream()
+                .map(RepoMetadata::id)
+                .collect(Collectors.toSet());
+
+        for (Long visibleId : projectService.visibleGithubRepoIds()){
+            if (!idsInGithub.contains(visibleId)){
+                projectService.hide(visibleId);
+            }
+        }
+
+        return summary;
+    }
+
     private void repoRecive(RepoMetadata repoMetadata){
         if (!repoMetadata.topics().contains("portfolio")){
             projectService.hide(repoMetadata.id());
@@ -62,4 +86,7 @@ public class SyncService {
         }
         projectService.saveOrUpdate(repoMetadata, portfolioFile);
     }
+
+
+
 }

@@ -257,6 +257,52 @@ public class SyncServiceTest {
         assertEquals(2, projectRepository.count());
     }
 
+    @Test
+    void shouldHideNothingWhenListingFails() {
+        // given
+        when(githubClient.getPortfolioFile("a")).thenReturn(validFile("title a"));
+        syncService.syncAll(List.of(repo(1L, "a")));
+        when(githubClient.listPortfolioRepos()).thenThrow(new RuntimeException("github down"));
+
+        // when
+        assertThrows(RuntimeException.class, () -> syncService.resyncAll());
+
+        // then
+        assertTrue(projectRepository.findByGithubRepoId(1L).orElseThrow().isVisible());
+    }
+
+    @Test
+    void shouldHideProjectThatIsNoLongerInGithubListing() {
+        // given
+        when(githubClient.getPortfolioFile("a")).thenReturn(validFile("title a"));
+        when(githubClient.getPortfolioFile("b")).thenReturn(validFile("title b"));
+        syncService.syncAll(List.of(repo(1L, "a"), repo(2L, "b")));
+        when(githubClient.listPortfolioRepos()).thenReturn(List.of(repo(1L, "a")));
+
+        // when
+        SyncSummary summary = syncService.resyncAll();
+
+        // then
+        assertEquals(1, summary.total());
+        assertTrue(projectRepository.findByGithubRepoId(1L).orElseThrow().isVisible());
+        assertFalse(projectRepository.findByGithubRepoId(2L).orElseThrow().isVisible());
+    }
+
+    @Test
+    void shouldHideNothingWhenGithubListingIsEmpty() {
+        // given
+        when(githubClient.getPortfolioFile("a")).thenReturn(validFile("title a"));
+        syncService.syncAll(List.of(repo(1L, "a")));
+        when(githubClient.listPortfolioRepos()).thenReturn(List.of());
+
+        // when
+        SyncSummary summary = syncService.resyncAll();
+
+        // then
+        assertEquals(0, summary.total());
+        assertTrue(projectRepository.findByGithubRepoId(1L).orElseThrow().isVisible());
+    }
+
     private RepoMetadata repo(long id, String name) {
         return new RepoMetadata(id, name, "urlTest", List.of("portfolio"), Instant.now());
     }

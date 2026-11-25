@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.shared.exception;
 
+import io.github.almeidasnicolas.portfoliosync.github.exception.GithubListingException;
 import io.github.almeidasnicolas.portfoliosync.webhook.exception.InvalidWebhookPayloadFormatException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,6 +18,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidWebhookPayloadFormatException.class)
     public ProblemDetail handleInvalidWebhookPayload(InvalidWebhookPayloadFormatException ex){
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(GithubListingException.class)
+    public ProblemDetail handleGithubListingFailure(GithubListingException ex){
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, ex.getMessage());
     }
 
 }

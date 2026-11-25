@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 3 are done. Two endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, and `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. Sprint 4 is in progress: the listing is sorted (featured first, then display order, then the latest push), and Spring Security is in place, with the public endpoints open and everything else denied by default. Admin routes now need the `X-Admin-Token` header (401 without a valid one). Next: `POST /admin/sync` (full manual resync) and its tests. See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 4 are done. Three endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`, and `POST /admin/sync` runs a full resync against the GitHub listing. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. The listing is sorted (featured first, then display order, then the latest push), and Spring Security keeps the public endpoints open and everything else denied by default. Admin routes need the `X-Admin-Token` header (401 without a valid one). If the GitHub listing fails, the resync answers 502 and hides nothing; if the listing comes back empty, it also hides nothing. Next: Sprint 5 (deploy). See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -332,7 +332,7 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Sync: create or update the project
   - [x] Hide projects that lose the topic or the file, keep the last valid version, store `last_error`
   - [x] Run the sync when a `push` delivery arrives
-- [ ] **Sprint 4 — Admin and ordering** (in progress)
+- [x] **Sprint 4 — Admin and ordering** (done)
   - [x] Sort the listing: featured first, then `display_order` (nulls last), then the most recent push
   - [x] Tests against PostgreSQL (Testcontainers): the three criteria and hidden projects left out
   - [x] Spring Security: public endpoints open, CSRF off, stateless, everything else denied by default
@@ -341,7 +341,9 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
     - [x] Filter registered in the security chain and `/admin/**` switched from `denyAll` to `authenticated`
     - [x] Missing or wrong token answered with 401 (authentication entry point)
     - [x] `ADMIN_TOKEN` defined on the local machine (passed per run, not persisted)
-  - [ ] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
-  - [ ] Tests for the admin endpoint (no token, wrong token, valid token)
+  - [x] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
+    - [x] An empty GitHub listing hides nothing (the first real run hid every visible project, so the guard was added)
+    - [x] A failed GitHub listing answers 502 through `GlobalExceptionHandler`, and hides nothing
+  - [x] Tests for the admin endpoint (no token, wrong token, valid token, listing failure)
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions
 - [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback

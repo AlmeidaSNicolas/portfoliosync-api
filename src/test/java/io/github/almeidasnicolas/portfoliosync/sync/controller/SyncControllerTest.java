@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.sync.controller;
 
+import io.github.almeidasnicolas.portfoliosync.github.exception.GithubListingException;
 import io.github.almeidasnicolas.portfoliosync.shared.security.SecurityConfig;
 import io.github.almeidasnicolas.portfoliosync.sync.dto.SyncSummary;
 import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
@@ -53,5 +54,13 @@ class SyncControllerTest {
                 .andExpect(jsonPath("$.total").value(2))
                 .andExpect(jsonPath("$.succeeded").value(1))
                 .andExpect(jsonPath("$.failed").value(1));
+    }
+
+    @Test
+    void shouldReturn502WhenGithubListingFails() throws Exception {
+        when(syncService.resyncAll()).thenThrow(new GithubListingException("github listing failed"));
+
+        mockMvc.perform(post("/admin/sync").header("X-Admin-Token", "qualquerTeste"))
+                .andExpect(status().isBadGateway());
     }
 }

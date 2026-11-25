@@ -9,6 +9,7 @@ import io.github.almeidasnicolas.portfoliosync.github.exception.PortfolioFileNot
 import io.github.almeidasnicolas.portfoliosync.project.domain.LocalizedText;
 import io.github.almeidasnicolas.portfoliosync.project.domain.Project;
 import io.github.almeidasnicolas.portfoliosync.project.repository.ProjectRepository;
+import io.github.almeidasnicolas.portfoliosync.sync.dto.SyncSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -233,6 +234,31 @@ public class SyncServiceTest {
         assertTrue(saved.isVisible());
         assertNull(saved.getLastError());
         assertEquals("fixed title", saved.getTitle().en());
+    }
+
+    @Test
+    void shouldContinueBatchAndCountFailureWhenOneRepoBreaks() {
+        // given
+        when(githubClient.getPortfolioFile("a")).thenReturn(validFile("title a"));
+        when(githubClient.getPortfolioFile("b")).thenThrow(new RuntimeException("boom"));
+        when(githubClient.getPortfolioFile("c")).thenReturn(validFile("title c"));
+
+        // when
+        SyncSummary summary = syncService.syncAll(List.of(
+                repo(1L, "a"), repo(2L, "b"), repo(3L, "c")));
+
+        // then
+        assertEquals(3, summary.total());
+        assertEquals(2, summary.succeeded());
+        assertEquals(1, summary.failed());
+        assertEquals(1, summary.failures().size());
+        assertEquals("b", summary.failures().get(0).repoName());
+        assertEquals("boom", summary.failures().get(0).message());
+        assertEquals(2, projectRepository.count());
+    }
+
+    private RepoMetadata repo(long id, String name) {
+        return new RepoMetadata(id, name, "urlTest", List.of("portfolio"), Instant.now());
     }
 
     private RepoMetadata metadata(String repoName, List<String> topics) {

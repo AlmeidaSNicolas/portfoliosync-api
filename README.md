@@ -340,7 +340,7 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
     - [x] `AdminTokenFilter` reads the `X-Admin-Token` header and compares it in constant time (`shared/security`)
     - [x] Filter registered in the security chain and `/admin/**` switched from `denyAll` to `authenticated`
     - [x] Missing or wrong token answered with 401 (authentication entry point)
-    - [ ] `ADMIN_TOKEN` defined on the local machine (planned for Sprint 5)
+    - [x] `ADMIN_TOKEN` defined on the local machine (passed per run, not persisted)
   - [ ] `POST /admin/sync`: full manual resync (also hides projects that lost the topic)
   - [ ] Tests for the admin endpoint (no token, wrong token, valid token)
 - [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions

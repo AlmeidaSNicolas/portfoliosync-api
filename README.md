@@ -87,6 +87,7 @@ Key decisions:
 - **Hide instead of delete**: a repository that loses the topic gets `visible = false`, so it comes back with its history if the topic returns.
 - **Idempotent webhooks**: each delivery is inserted first; the `UNIQUE` constraint on `delivery_id` rejects GitHub retries atomically, then the delivery is processed and its status updated.
 - **`webhook_deliveries` has no foreign key**: it is a log, and it also records deliveries for repositories that never became projects.
+- **A push whose `portfolio.json` is missing or invalid answers 500**, with the reason in the `detail` field. The delivery is still recorded as `FAILED` with `last_error`, and the failure stays visible in GitHub's delivery list.
 
 ## API
 

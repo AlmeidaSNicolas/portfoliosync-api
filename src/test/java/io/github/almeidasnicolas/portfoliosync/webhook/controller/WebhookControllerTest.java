@@ -1,5 +1,6 @@
 package io.github.almeidasnicolas.portfoliosync.webhook.controller;
 
+import io.github.almeidasnicolas.portfoliosync.github.exception.PortfolioFileNotFoundException;
 import io.github.almeidasnicolas.portfoliosync.github.exception.RepositoryNotFoundException;
 import io.github.almeidasnicolas.portfoliosync.shared.security.SecurityConfig;
 import io.github.almeidasnicolas.portfoliosync.sync.service.SyncService;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Import({HmacValidator.class, GithubPushPayloadParser.class, SecurityConfig.class})
@@ -153,6 +155,18 @@ class WebhookControllerTest {
         assertInstanceOf(IllegalStateException.class, thrown.getCause());
         verify(webhookDeliveryService).markFailed(DELIVERY_ID, "unexpected failure");
         verify(webhookDeliveryService, never()).markProcessed(any());
+    }
+
+    @Test
+    void shouldReturn500WithReasonWhenPortfolioFileIsMissing() throws Exception{
+        when(webhookDeliveryService.registerIfNew(DELIVERY_ID, "push")).thenReturn(true);
+        doThrow(new PortfolioFileNotFoundException("portfolio.json not found in repo: meu-projeto", null)).when(syncService).sync("meu-projeto");
+
+        mockMvc.perform(post("/webhooks/github").header("X-GitHub-Event", "push").header("X-Hub-Signature-256", PUSH_HEADER).header("X-GitHub-Delivery", DELIVERY_ID).content(PUSH_BODY))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("portfolio.json not found in repo: meu-projeto"));
+
+        verify(webhookDeliveryService).markFailed(DELIVERY_ID, "portfolio.json not found in repo: meu-projeto");
     }
 
 

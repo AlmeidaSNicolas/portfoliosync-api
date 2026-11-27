@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 4 are done. Three endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`, and `POST /admin/sync` runs a full resync against the GitHub listing. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. The listing is sorted (featured first, then display order, then the latest push), and Spring Security keeps the public endpoints open and everything else denied by default. Admin routes need the `X-Admin-Token` header (401 without a valid one). If the GitHub listing fails, the resync answers 502 and hides nothing; if the listing comes back empty, it also hides nothing. Next: Sprint 5 (deploy). See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 5 are done: the API runs on Render with a Neon database. Sprints 0 to 4 are done. Three endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`, and `POST /admin/sync` runs a full resync against the GitHub listing. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. The listing is sorted (featured first, then display order, then the latest push), and Spring Security keeps the public endpoints open and everything else denied by default. Admin routes need the `X-Admin-Token` header (401 without a valid one). If the GitHub listing fails, the resync answers 502 and hides nothing; if the listing comes back empty, it also hides nothing. Next: Sprint 6 (the portfolio site consuming `GET /api/projects`). See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -293,6 +293,17 @@ The schema is owned by Flyway. Migrations live in `src/main/resources/db/migrati
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `./mvnw verify` on every push to `main` and every pull request targeting `main`, using Temurin 21 with the Maven dependency cache. The integration tests start PostgreSQL 17 through Testcontainers, so CI needs no database configuration.
 
+## Deployment
+
+The API runs on [Render](https://render.com) as a Docker web service built from the [`Dockerfile`](Dockerfile) (two stages: JDK 21 to build, JRE 21 to run, as a non-root user). The deploy runs in [`.github/workflows/cd.yml`](.github/workflows/cd.yml): on every push to `main` the tests run first, and only if they pass the job calls the Render deploy hook (`RENDER_DEPLOY_HOOK_URL`, a repository secret). Render's own auto-deploy is turned off so each commit deploys once.
+
+The database is a Neon PostgreSQL 17 instance in Frankfurt, in the same region as the service. The connection comes in through `DB_URL` (JDBC URL with `sslmode=require`), `DB_USERNAME` and `DB_PASSWORD`. Flyway applies the migrations when the app starts.
+
+Environment variables set on Render (none of them has a default in the repository): `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `GITHUB_TOKEN`, `ADMIN_TOKEN` and `GITHUB_WEBHOOK_SECRET`. The service listens on the `PORT` that Render provides, and falls back to 8080 locally.
+
+The GitHub webhook points to `https://<service>.onrender.com/webhooks/github`, with `application/json` and the same secret as `GITHUB_WEBHOOK_SECRET`.
+
+
 ## Running locally
 
 Requirements: Java 21 and Docker.
@@ -377,5 +388,11 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
     - [x] An empty GitHub listing hides nothing (the first real run hid every visible project, so the guard was added)
     - [x] A failed GitHub listing answers 502 through `GlobalExceptionHandler`, and hides nothing
   - [x] Tests for the admin endpoint (no token, wrong token, valid token, listing failure)
-- [ ] **Sprint 5 — Deploy:** Dockerfile, Render + Neon, CD with GitHub Actions
+- [x] **Sprint 5 — Deploy** (done)
+  - [x] Dockerfile: two stages, non-root user, `ENTRYPOINT` in exec form
+  - [x] `server.port` read from `PORT` (Render), 8080 locally
+  - [x] Neon PostgreSQL in Frankfurt, migrations applied on the empty database
+  - [x] Render web service in Frankfurt with the environment variables and the health check on `/actuator/health`
+  - [x] GitHub webhook pointing to the public URL, tested with a real push
+  - [x] CD as a GitHub Actions job: tests, then the Render deploy hook
 - [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback

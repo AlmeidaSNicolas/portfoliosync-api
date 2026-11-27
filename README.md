@@ -42,7 +42,7 @@ A repository shows up on the portfolio when it has both:
 }
 ```
 
-`title` and `description` are required in both languages; the other fields are optional.
+`title` and `description` are required in both languages; the other fields are optional. `featured: true` puts the project next to the Telegram bot card on the portfolio, with the same highlight, and `order` sorts the projects within each group.
 
 ## Data model
 

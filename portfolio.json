@@ -1,0 +1,13 @@
+{
+  "title": {
+    "es": "PortfolioSync API",
+    "en": "PortfolioSync API"
+  },
+  "description": {
+    "es": "API en Spring Boot que mantiene este portafolio al día: cada push a GitHub llega por webhook, se valida la firma y el proyecto se sincroniza con la base de datos.",
+    "en": "Spring Boot API that keeps this portfolio up to date: every GitHub push arrives through a webhook, the signature is verified, and the project is synced to the database."
+  },
+  "stack": ["Java 21", "Spring Boot", "PostgreSQL", "Flyway", "Docker"],
+  "featured": true,
+  "order": 1
+}

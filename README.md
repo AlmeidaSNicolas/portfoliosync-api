@@ -4,7 +4,7 @@
 
 Backend that keeps the projects section of my portfolio up to date on its own. When I push to a GitHub repository that has the `portfolio` topic and a `portfolio.json` file, a webhook tells this API, the API reads the repository's metadata and stores the project, and the portfolio site lists it in Spanish or English.
 
-> 🚧 **Work in progress.** Sprints 0 to 5 are done: the API runs on Render with a Neon database. Three endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`, and `POST /admin/sync` runs a full resync against the GitHub listing. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. The listing is sorted (featured first, then display order, then the latest push), and Spring Security keeps the public endpoints open and everything else denied by default. Admin routes need the `X-Admin-Token` header (401 without a valid one). If the GitHub listing fails, the resync answers 502 and hides nothing; if the listing comes back empty, it also hides nothing. Next: Sprint 6 (the portfolio site consuming `GET /api/projects`). See the [roadmap](#roadmap).
+> 🚧 **Work in progress.** Sprints 0 to 6 are done: the API runs on Render with a Neon database, and the portfolio site (Next.js) reads `GET /api/projects` with ISR and a static fallback. Three endpoints are live: `GET /api/projects` lists the visible projects in Spanish or English, `POST /webhooks/github` accepts GitHub deliveries, verifies their HMAC signature, records each delivery once and runs the sync for every `push`, and `POST /admin/sync` runs a full resync against the GitHub listing. The sync turns a repository into a stored project (create or update), hides projects that lose the topic or whose `portfolio.json` is missing or invalid, and stores the reason in `last_error`. Each delivery ends as `PROCESSED`, `IGNORED` or `FAILED`. The listing is sorted (featured first, then display order, then the latest push), and Spring Security keeps the public endpoints open and everything else denied by default. Admin routes need the `X-Admin-Token` header (401 without a valid one). If the GitHub listing fails, the resync answers 502 and hides nothing; if the listing comes back empty, it also hides nothing. Next: Sprint 6 (the portfolio site consuming `GET /api/projects`). See the [roadmap](#roadmap).
 
 ## How it works
 
@@ -395,4 +395,8 @@ Run the tests (Testcontainers starts its own PostgreSQL, so Docker must be runni
   - [x] Render web service in Frankfurt with the environment variables and the health check on `/actuator/health`
   - [x] GitHub webhook pointing to the public URL, tested with a real push
   - [x] CD as a GitHub Actions job: tests, then the Render deploy hook
-- [ ] **Sprint 6 — Portfolio:** Next.js site consuming the API with ISR and a fallback
+- [x] **Sprint 6 — Portfolio** (done)
+  - [x] Next.js site reads `GET /api/projects` on the server, in both languages
+  - [x] ISR: the page is revalidated every hour
+  - [x] 30-second timeout (Render's free plan wakes up in about 20 seconds) and a static fallback when the API is down or empty
+  - [x] Every project from the API sits in the column beside the bot card
